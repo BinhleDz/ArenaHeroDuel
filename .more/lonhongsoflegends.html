@@ -1,0 +1,3823 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>LOL : Lonhongs of Legends (Updated v7 - IMUZIK Added)</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #111; font-family: 'Segoe UI', sans-serif; user-select: none; }
+        canvas { display: block; }
+        
+        /* UI Overlay */
+        .overlay-screen { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; color: white; }
+        .hero-options, .upgrade-options { display: flex; gap: 15px; margin-top: 30px; flex-wrap: wrap; justify-content: center; }
+        
+        .card { width: 200px; padding: 15px; background: #333; border: 2px solid #555; border-radius: 10px; cursor: pointer; text-align: center; transition: 0.2s; position: relative; overflow: hidden; }
+        .card:hover { border-color: #f1c40f; background: #444; transform: translateY(-5px); box-shadow: 0 5px 15px rgba(241, 196, 15, 0.3); }
+        .card h2 { margin: 0 0 8px 0; font-size: 16px; color: #fff; text-transform: uppercase; }
+        .card p { font-size: 12px; color: #ccc; margin: 0; line-height: 1.4; }
+        
+        .key-hint { position: absolute; top: 5px; right: 8px; font-weight: bold; color: rgba(255,255,255,0.3); font-size: 20px; }
+
+        .rarity-common { border-color: #bdc3c7; }
+        .rarity-rare { border-color: #3498db; }
+        .rarity-epic { border-color: #9b59b6; }
+        .rarity-legend { border-color: #f1c40f; }
+        .rarity-red { border-color: #e74c3c; }
+        .rarity-poison { border-color: #009432; box-shadow: 0 0 10px #009432; }
+        .rarity-wind { border-color: #7efff5; box-shadow: 0 0 10px #7efff5; color: #7efff5; }
+        .rarity-ninja { border-color: #4834d4; box-shadow: 0 0 10px #4834d4; }
+        .rarity-earth { border-color: #795548; box-shadow: 0 0 10px #795548; }
+        .rarity-imuzik { border-color: #607d8b; box-shadow: 0 0 15px #cfd8dc; color: #eceff1; }
+
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+        #hud-left { position: absolute; bottom: 30px; left: 20px; color: white; }
+        
+        /* Score & Damage Board */
+        #top-right-hud { position: absolute; top: 20px; right: 20px; text-align: right; display: flex; flex-direction: column; align-items: flex-end;}
+        #score-board { color: #f1c40f; font-size: 24px; font-weight: bold; text-shadow: 0 0 5px black; margin-bottom: 5px; }
+        .dmg-tracker { font-size: 12px; font-weight: bold; text-shadow: 1px 1px 0 #000; margin-bottom: 2px; }
+        
+        /* Stats Panel */
+        #stats-panel { 
+            position: absolute; 
+            bottom: 20px; 
+            right: 20px; 
+            color: rgba(255, 255, 255, 0.8); 
+            font-size: 12px; 
+            text-align: right; 
+            background: rgba(0, 0, 0, 0.5); 
+            padding: 10px; 
+            border-radius: 5px; 
+            line-height: 1.6;
+            pointer-events: none;
+        }
+
+        /* Bars */
+        .bar-container { width: 250px; height: 18px; background: #222; margin-top: 5px; border: 1px solid #444; position: relative; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; position: absolute; left: 0; top: 0; transition: width 0.1s linear; }
+        .hp-fill { background: #e74c3c; z-index: 2; }
+        .shield-fill { background: #bdc3c7; z-index: 3; opacity: 0.8; }
+        .mana-fill { background: #3498db; }
+        .bar-text { position: absolute; width: 100%; text-align: center; z-index: 4; font-size: 11px; line-height: 18px; font-weight: bold; text-shadow: 1px 1px black; color: #fff; }
+        
+        #xp-container { position: absolute; bottom: 0; left: 0; width: 100%; height: 6px; background: #222; }
+        #xp-fill { height: 100%; background: #f1c40f; width: 0%; transition: width 0.2s; }
+
+        /* Skills */
+        #skill-bar { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; }
+        .skill-slot { width: 60px; height: 60px; background: rgba(0,0,0,0.8); border: 2px solid #555; position: relative; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 10px; border-radius: 8px; }
+        .special-slot { border-color: #f1c40f; box-shadow: 0 0 10px rgba(241, 196, 15, 0.3); }
+        .cooldown-overlay { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.7); height: 0%; transition: height 0.1s linear; }
+        .key-bind { position: absolute; top: 2px; left: 4px; font-size: 12px; font-weight: bold; color: #aaa; }
+        .skill-active { border-color: #00ff00 !important; box-shadow: 0 0 15px #00ff00; }
+
+        /* BOSS BAR */
+        #boss-hud { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); width: 600px; display: none; flex-direction: column; align-items: center; }
+        #boss-name { color: #e74c3c; font-weight: bold; font-size: 20px; text-shadow: 0 0 10px red; margin-bottom: 5px; }
+        .boss-bar-bg { width: 100%; height: 25px; background: #222; border: 2px solid #555; border-radius: 5px; position: relative; overflow: hidden; }
+        #boss-hp-fill { width: 100%; height: 100%; background: #c0392b; transition: width 0.1s; }
+        
+        .float-text { position: absolute; font-weight: bold; pointer-events: none; animation: floatUp 0.8s forwards; z-index: 50; font-size: 14px; text-shadow: 1px 1px 0 #000; }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-40px) scale(1.2); opacity: 0; } }
+
+        /* Pause Screen */
+        #pause-screen { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 200; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="selection-screen" class="overlay-screen">
+        <h1 style="color: #f1c40f; text-shadow: 0 0 20px orange;">LOL : Lonhongs of Legends</h1>
+        <h3 id="step-title" style="color: #eee;">Pick Hero</h3>
+        <div id="hero-select" class="hero-options">
+            <div class="card rarity-red" style="border-color: #c23616; color: #fff;" onclick="pickHero('RUMBABARIAN')">
+                <h2>RUMBABARIAN</h2>
+                <p><b>Cận chiến</b>: Đẩy lùi<br></p>
+                <p style="color: #e17055; margin-top:5px;">Vũ khí: Nắm Đấm</p>
+            </div>
+            <div class="card rarity-earth" style="border-color: #299100; color: #d7ccc8;" onclick="pickHero('DUALATASATA')">
+                <h2>DUALATASATA</h2>
+                <p>Búa Mộc (HP).<br>Dùng Máu ra chiêu.<br>Kill quái tăng Max HP.</p>
+                <p style="color: #884200; margin-top:5px;">Vũ khí: Búa Gỗ</p>
+            </div>
+            <div class="card rarity-ninja" style="border-color: #57606f; color: #dfe4ea;" onclick="pickHero('ASAGGY')">
+                <h2>ASAGGY</h2>
+                <p>Sát thủ dao găm.<br>Cơ động / hồi chiêu.</p>
+                <p style="color: #7f8c8d; margin-top:5px;">Vũ khí: Dao Găm</p>
+            </div>
+            <div class="card rarity-legend" style="border-color: #d63031; color: #ff7675;" onclick="pickHero('FLORENTINO')">
+                <h2>FLORENTINO</h2>
+                <p><b>Tuyệt kỹ</b>: Nhặt hoa.<br>Đánh thường lướt 2 nhịp.<br>Combo liên tục.</p>
+                <p style="color: #fab1a0; margin-top:5px;">Vũ khí: Kiếm Hoa</p>
+            </div>
+            <div class="card rarity-legend" style="border-color: #e58e26; color: #f39c12;" onclick="pickHero('AKATSU')">
+                <h2>AKATSU</h2>
+                <p>Sát thủ bắn tỉa AWM.<br>Sát thương cực lớn</p>
+                <p style="color: #e58e26; margin-top:5px;">Vũ khí: AWM</p>
+            </div>
+            <div class="card rarity-epic" style="border-color: #d980fa; color: #f8c291;" onclick="pickHero('MAGGAZIC')">
+                <h2>MAGGAZIC</h2>
+                <p>Nhạc sĩ.<br>Sóng âm</p>
+                <p style="color: #d980fa; margin-top:5px;">Vũ khí: Loa</p>
+            </div>
+            <div class="card rarity-red" style="border-color: #e1b12c; color: #e1b12c;" onclick="pickHero('GORGGER')">
+                <h2>GORGGER</h2>
+                <p>Phóng lựu.<br>Sát thương diện rộng.</p>
+                <p style="color: #fff; margin-top:5px;">Vũ khí: Súng Phóng Lựu</p>
+            </div>
+            <div class="card rarity-imuzik" onclick="pickHero('IMUZIK')">
+                <h2>IMUZIK</h2>
+                <p><b>Hardcore</b>: sát thương lớn, bị khựng.</p>
+                <p style="color: #cfd8dc; margin-top:5px;">Vũ khí: Trường Thương</p>
+            </div>
+            <div class="card rarity-earth" onclick="pickHero('CASTUS')">
+                <h2>CASTUS</h2>
+                <p>Bền bỉ.<br>Choáng.</p>
+                <p style="color: #a1887f; margin-top:5px;">Vũ khí: Búa Tạ</p>
+            </div>
+            <div class="card rarity-ninja" onclick="pickHero('VEMY')">
+                <h2>VEMY</h2>
+                <p>Nội tại: Đòn thứ 3 xuyên thấu.<br>E: Tăng DMG khi áp sát.</p>
+                <p style="color: #686de0; margin-top:5px;">Vũ khí: Phi Tiêu</p>
+            </div>
+            <div class="card rarity-wind" onclick="pickHero('SKULGEM')">
+                <h2>SKULGEM</h2>
+                <p>Sát thương vùng lớn.<br>Đẩy lùi thả diều</p>
+                <p style="color: #7efff5; margin-top:5px;">Vũ khí: Phong Kiếm</p>
+            </div>
+            <div class="card rarity-legend" onclick="pickHero('ALENA')">
+                <h2>Alena</h2>
+                <p>Tầm xa - Chí mạng cao.<br>Sát thương đơn mục tiêu.</p>
+                <p style="color: #2ecc71; margin-top:5px;">Vũ khí: Cung Nguyên Sinh</p>
+            </div>
+            <div class="card rarity-rare" onclick="pickHero('SNOW')">
+                <h2>Snow</h2>
+                <p>Đóng băng-làm chậm<br>Cấu rỉa.</p>
+                <p style="color: #3498db; margin-top:5px;">Vũ khí: Gậy Băng</p>
+            </div>
+            <div class="card rarity-epic" onclick="pickHero('PARFAIT')">
+                <h2>Parfait</h2>
+                <p>Cận chiến, <b>Siêu Trâu</b>.<br>Lan 100% 1 mục tiêu.</p>
+                <p style="color: #bbcc00; margin-top:5px;">Vũ khí: Trọng Cân Kiếm</p>
+            </div>
+            <div class="card rarity-poison" onclick="pickHero('ELLWITCH')">
+                <h2>ELL'WITCH</h2>
+                <p>Độc Dược sư.<br>Siêu cấu rỉa</p>
+                <p style="color: #009432; margin-top:5px;">Vũ khí: Lo Thuốc</p>
+            </div>
+            <div class="card rarity-red" onclick="pickHero('GONGUN')">
+                <h2>GONGUN</h2>
+                <p>Dồn sát thương.<br>Tốc đánh cao</p>
+                <p style="color: #cb5f00; margin-top:5px;">Vũ khí: Mini Gun</p>
+            </div>
+            <div class="card rarity-legend" style="border-color: #8e44ad;" onclick="pickHero('DURENAI')">
+                <h2>DURENAI</h2>
+                <p>Sát thương lan sét.<br>Áp sát-Thả diều.</p>
+                <p style="color: #fbff24; margin-top:5px;">Vũ khí: Sấm Sét</p>
+            </div>
+            <div class="card rarity-red" style="border-color: #ff4757;" onclick="pickHero('SHOTGUN')">
+                <h2>SHOTGUN</h2>
+                <p>8 viên/bắn.<br>Khó sử dụng.</p>
+                <p style="color: #b03500; margin-top:5px;">Vũ khí: Shotgun</p>
+            </div>
+            <div class="card rarity-legend" style="border-color: #f1c40f; color: #fff;" onclick="pickHero('YORNMAZIAN')">
+                <h2>YORNMAZIAN</h2>
+                <p>Cung Ánh Sáng.<br>Tên thần !.</p>
+                <p style="color: #f1c40f; margin-top:5px;">Vũ khí: Cung Thần</p>
+            </div>
+            <div class="card rarity-legend" style="border-color: #f1c40f;" onclick="pickHero('LUFFY')">
+                <h2>LUFFY</h2>
+                <p>Vua hải tặc.<br>Haki bá vương.</p>
+                <p style="color: #f39c12; margin-top:5px;">Vũ khí: Tay trần</p>
+            </div>
+            <div class="card rarity-epic" style="border-color: #8e44ad;" onclick="pickHero('MAGNES')">
+                <h2>MAGNES</h2>
+                <p>Boomerang xuyên thấu.<br>Cấu rỉa cực tốt.</p>
+                <p style="color: #8e44ad; margin-top:5px;">Vũ khí: Boomerang</p>
+            </div>
+            <div class="card rarity-epic" style="border-color: #485460; color: #d2dae2;" onclick="pickHero('NEUSOLD')">
+                <h2>NEUSOLD</h2>
+                <p><b>Lưỡi Hái Tử Thần</b><br>Mana Không tự hồi.</p>
+                <p style="color: #5c006a; margin-top:5px;">Vũ khí: Lưỡi Hái</p>
+            </div>
+            <div class="card rarity-ninja" onclick="pickHero('ZIKU')" style="border-color: #feca57; box-shadow: 0 0 10px #feca57; color: #fff;">
+                <h2 style="color: #feca57;">ZIKU</h2>
+                <p><b>Shuriken Master</b><br>Nội tại: Giật sét.<br>Q: Xuyên thấu giảm dmg.<br>R: Bão phi tiêu.</p>
+                <p style="color: #feca57; margin-top:5px;">Vũ khí: Shuriken</p>
+            </div>
+        </div>
+
+        <div id="spell-select" class="hero-options" style="display: none;">
+            <div class="card rarity-red" onclick="startGame('SMITE')" style="border-color: #ff0000;">
+                <h2>Trừng Trị</h2>
+                <p>Gây sát thương cực lớn lên Boss/Rồng + Choáng.</p>
+                <p style="color: #e74c3c; margin-top:5px;">Space: 15s Hồi chiêu</p>
+            </div>
+            <div class="card rarity-common" onclick="startGame('HEAL')">
+                <h2>Healer báo thù</h2>
+                <p>Hồi từ từ <b>25% HP</b> trong 5 giây.</p>
+                <p style="color: #2ecc71; margin-top:5px;">Space: 15s Hồi chiêu</p>
+            </div>
+            <div class="card rarity-rare" onclick="startGame('FREEZE')">
+                <h2>Đồng hồ cát</h2>
+                <p>Đóng băng tất cả quái <b>3 giây</b>.</p>
+                <p style="color: #3498db; margin-top:5px;">Space: 15s Hồi chiêu</p>
+            </div>
+            <div class="card rarity-epic" onclick="startGame('TURRET')">
+                <h2>Kệ sáu nòng</h2>
+                <p>Đặt súng máy bắn phụ.</p>
+                <p style="color: #95a5a6; margin-top:5px;">Space: 15s Hồi chiêu</p>
+            </div>
+            <div class="card rarity-legend" onclick="startGame('TELEPORT')" style="border-color: #e74c3c;">
+                <h2>Tốc Biến</h2>
+                <p>Dịch chuyển tức thời tới vị trí chuột.</p>
+                <p style="color: #e74c3c; margin-top:5px;">Space: 15s Hồi chiêu</p>
+            </div>
+            <div class="card rarity-legend" onclick="startGame('RAGE')" style="border-color: #f1c40f;">
+                <h2>Cuồng Nộ</h2>
+                <p>+25% DMG, Hồi 5% HP trong 3s.</p>
+                <p style="color: #f39c12; margin-top:5px;">Space: 15s Hồi chiêu</p>
+            </div>
+            <div class="card rarity-epic" onclick="startGame('PROTECT')" style="border-color: #34495e;">
+                <h2>Bảo Vệ</h2>
+                <p>Giảm 25% tốc quái, +50% Miễn thương (4s).</p>
+                <p style="color: #bdc3c7; margin-top:5px;">Space: 15s Hồi chiêu</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="upgrade-screen" class="overlay-screen" style="display: none;">
+        <h1 style="color: #00ffcc; text-shadow: 0 0 10px cyan;">LEVEL UP!</h1>
+        <p style="color: #eee;">Ấn phím <b>1</b>, <b>2</b>, hoặc <b>3</b> để chọn nhanh</p>
+        <p id="levelup-msg" style="color: #aaa; margin-bottom: 20px;">Sát thương tay đã tự động tăng</p>
+        <div id="upgrade-list" class="upgrade-options"></div>
+    </div>
+
+    <div id="pause-screen">
+        <h1 style="font-size: 48px; text-shadow: 0 0 20px white;">GAME PAUSED</h1>
+        <p>Nhấn phím <b>P</b> để tiếp tục</p>
+    </div>
+
+    <div id="ui-layer">
+        <div id="boss-hud">
+            <div id="boss-name">!!! BOSS WARNING !!!</div>
+            <div class="boss-bar-bg"><div id="boss-hp-fill"></div></div>
+        </div>
+        
+        <div id="top-right-hud">
+            <div id="score-board">SCORE: <span id="score-val">0</span></div>
+            <div id="dmg-phys" class="dmg-tracker" style="color: #fff;">Tay: 0</div>
+            <div id="dmg-skill" class="dmg-tracker" style="color: #3498db;">Skill: 0</div>
+            <div id="dmg-total" class="dmg-tracker" style="color: #f1c40f;">Tổng: 0</div>
+        </div>
+
+        <div id="stats-panel">
+            <div style="color:#f1c40f; font-weight:bold; margin-bottom:5px">THÔNG SỐ</div>
+            <div id="stat-dmg">DMG: 0</div>
+            <div id="stat-mdmg">ST PHÉP: 0</div>
+            <div id="stat-armor">GIÁP: 0%</div>
+            <div id="stat-crit">CHÍ MẠNG: 0%</div>
+            <div id="stat-critdmg">ST CHÍ MẠNG: +100%</div>
+            <div id="stat-ls">HÚT MÁU: 0%</div>
+            <div id="stat-sv">HÚT PHÉP: 0%</div>
+            <div id="stat-reflect">PHẢN DAME: 0%</div>
+            <div id="stat-regen">HỒI MÁU: 0/s</div>
+            <div id="stat-mregen">HỒI MANA: 0/s</div>
+        </div>
+        <div id="hud-left">
+            <div id="hero-info" style="font-weight: bold; font-size: 18px; margin-bottom: 5px;"></div>
+            <div class="bar-container">
+                <div id="shield-fill" class="bar-fill shield-fill" style="width: 0%;"></div>
+                <div id="hp-fill" class="bar-fill hp-fill"></div>
+                <div class="bar-text" id="hp-text">0/0</div>
+            </div>
+            <div class="bar-container">
+                <div id="mana-fill" class="bar-fill mana-fill"></div>
+                <div class="bar-text" id="mana-text">0/0</div>
+            </div>
+        </div>
+        <div id="skill-bar">
+            <div id="slot-1" class="skill-slot"><span class="key-bind">Q</span><div id="cd-1" class="cooldown-overlay"></div><span id="s1-n" style="margin-top:10px"></span></div>
+            <div id="slot-2" class="skill-slot"><span class="key-bind">E</span><div id="cd-2" class="cooldown-overlay"></div><span id="s2-n" style="margin-top:10px"></span></div>
+            <div id="slot-3" class="skill-slot"><span class="key-bind">R</span><div id="cd-3" class="cooldown-overlay"></div><span id="s3-n" style="margin-top:10px"></span></div>
+            <div class="skill-slot special-slot"><span class="key-bind">SPC</span><div id="cd-4" class="cooldown-overlay"></div><span id="s4-n" style="margin-top:10px">PHỤ TRỢ</span></div>
+        </div>
+        <div id="xp-container"><div id="xp-fill"></div></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const WORLD_WIDTH = 3000, WORLD_HEIGHT = 3000;
+let lastTime = 0, gameActive = false, isPaused = false, score = 0, gameTime = 0, freezeTimer = 0;
+let selectedHeroType = '';
+let currentUpgradeChoices = []; 
+
+// DAMAGE TRACKING VARIABLES
+let heroTotalDmg = 0;
+let heroPhysDmg = 0;
+let heroSkillDmg = 0;
+
+// Boss Logic Variables
+let bossInstance = null;
+let bossLevel = 1;
+let lastBossDeathTime = 0; 
+
+const keys = { w: false, a: false, s: false, d: false };
+const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false };
+
+window.addEventListener('keydown', e => { 
+    let k = e.key.toLowerCase();
+    
+    if (!gameActive && document.getElementById('upgrade-screen').style.display === 'flex') {
+        if (k === '1' && currentUpgradeChoices[0]) selectUpgrade(0);
+        if (k === '2' && currentUpgradeChoices[1]) selectUpgrade(1);
+        if (k === '3' && currentUpgradeChoices[2]) selectUpgrade(2);
+        return;
+    }
+
+    if (k === 'p' && gameActive) { togglePause(); return; }
+
+    if(keys.hasOwnProperty(k)) keys[k] = true; 
+    if(gameActive && !isPaused) {
+        if(k==='q' || k==='1') hero.castSkill(1);
+        if(k==='e' || k==='2') hero.castSkill(2);
+        if(k==='r' || k==='3') hero.castSkill(3);
+        if(e.code === 'Space') hero.castSpecial(); 
+    }
+});
+window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false; });
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mousedown', () => mouse.down = true);
+window.addEventListener('mouseup', () => mouse.down = false);
+
+function togglePause() {
+    isPaused = !isPaused;
+    document.getElementById('pause-screen').style.display = isPaused ? 'flex' : 'none';
+    if (!isPaused) { lastTime = performance.now(); requestAnimationFrame(gameLoop); }
+}
+
+function getDistSq(e1, e2) { let dx = e1.x - e2.x; let dy = e1.y - e2.y; return dx*dx + dy*dy; }
+function spawnFloatingText(text, x, y, color) {
+    const el = document.createElement('div'); el.className = 'float-text'; el.innerText = text;
+    el.style.left = (x - camera.x) + 'px'; el.style.top = (y - camera.y) + 'px';
+    el.style.color = color; document.body.appendChild(el); 
+    setTimeout(() => el.remove(), 800);
+}
+
+const camera = {
+    x: 0, y: 0,
+    update(target) {
+        this.x += (target.x - canvas.width/2 - this.x) * 0.1;
+        this.y += (target.y - canvas.height/2 - this.y) * 0.1;
+        this.x = Math.max(0, Math.min(this.x, WORLD_WIDTH - canvas.width));
+        this.y = Math.max(0, Math.min(this.y, WORLD_HEIGHT - canvas.height));
+    }
+};
+
+class Hero {
+    constructor(type, special) {
+        this.x = WORLD_WIDTH/2; this.y = WORLD_HEIGHT/2;
+        this.type = type; this.special = special;
+        this.radius = 16; this.level = 1; this.exp = 0; this.expToLevel = 100;
+        
+        this.atkRangeMod = 0;   
+        this.armor = 0;         
+        this.speedBase = 220; //tốc chạy mặc định
+        if (type === 'IMUZIK') this.speedBase = 200;
+        if (type === 'NEUSOLD') this.speedBase = 260;
+
+        this.speedMod = 0;      
+        this.hpRegen = 0;       
+        
+        this.critRate = 0.0;   
+        this.critDamagePercent = 0.0;
+        if (type === 'ALENA') {
+            this.critRate = 0.15;          // 15% Tỉ lệ chí mạng
+            this.critDamagePercent = 0.25; // 25% Sát thương chí mạng cộng thêm
+        }
+        this.skillAmp = 1.0;    
+        this.splashChance = 0;  
+        this.splashDmgRatio = 0.25; 
+        
+        this.lifesteal = 0;    
+        this.spellVamp = 0;    
+        this.manaRegenPct = 0; 
+        this.bonusAtkSpeed = 0; 
+
+        this.thorns = 0;
+        this.rageActive = false; 
+        this.rageTimer = 0;
+        this.protectActive = false;
+        this.protectTimer = 0;
+        this.ellwitchBuffTimer = 0;
+
+        // Skulgem Passive Timer
+        this.skulgemPassiveTimer = 10;
+        
+        // Vemy Variables
+        this.vemyAtkCount = 0;
+        this.vemyS2Active = false;
+        this.asUpgrades = 0;
+
+        // Castus Variables
+        this.castusS1Active = false;
+
+        // Imuzik Variables
+        this.imuzikImmunityTimer = 0;
+        this.imuzikUltTimer = 0;
+
+        const cfgs = {
+            // Đã thêm mdmg = dmg * 2.5 (xấp xỉ)
+            'ALENA': { hp: 700, m: 350, dmg: 75, mdmg: 17, c: '#2ecc71', r: 550, as: 0.7, arm: 0 },
+            'SNOW':   { hp: 550, m: 800, dmg: 15, mdmg: 150, c: '#3498db', r: 450, as: 0.7, arm: 0 },
+            'PARFAIT': { hp: 1500, m: 250, dmg: 50, mdmg: 25, c: '#e74c3c', r: 160, as: 0.8, arm: 0.20 },
+            'GONGUN': { hp: 600, m: 300, dmg: 12, mdmg: 20, c: '#e67e22', r: 500, as: 0.16, arm: 0 },
+            'DURENAI': { hp: 650, m: 600, dmg: 20, mdmg: 40, c: '#9b59b6', r: 275, as: 0.7, arm: 0 },
+            'SHOTGUN': { hp: 700, m: 400, dmg: 150, mdmg: 25, c: '#ff4757', r: 460, as: 1.5, arm: 0.25 },
+            'LUFFY':   { hp: 1500, m: 300, dmg: 50, mdmg: 125, c: '#f39c12', r: 160, as: 0.8, arm: 0.15 },
+            'MAGNES':  { hp: 600, m: 500, dmg: 60, mdmg: 150, c: '#8e44ad', r: 275, as: 1.0, arm: 0 },
+            'ELLWITCH':{ hp: 600, m: 600, dmg: 0, mdmg: 50, c: '#009432', r: 400, as: 0.8, arm: 0 },
+            'SKULGEM': { hp: 1000, m: 450, dmg: 25, mdmg: 15, c: '#7efff5', r: 170, as: 0.6, arm: 0.1 },
+            'VEMY':    { hp: 650, m: 400, dmg: 27, mdmg: 70, c: '#4834d4', r: 550, as: 0.6, arm: 0 },
+            'CASTUS':  { hp: 3600, m: 350, dmg: 125, mdmg: 300, c: '#795548', r: 100, as: 1.5, arm: 0.25 },
+            'IMUZIK':  { hp: 2000, m: 450, dmg: 125, mdmg: 225, c: '#607d8b', r: 170, as: 1.0, arm: 0.15 },
+            'ASAGGY':  { hp: 700, m: 350, dmg: 20, mdmg: 50, c: '#57606f', r: 90, as: 0.3, arm: 0.1 },
+            'MAGGAZIC': { hp: 1300, m: 500, dmg: 40, mdmg: 100, c: '#d980fa', r: 100, as: 0.8, arm: 0.1 },
+            'AKATSU':  { hp: 650, m: 450, dmg: 200, mdmg: 500, c: '#e58e26', r: 1000, as: 3, arm: 0 },
+            'YORNMAZIAN': { hp: 500, m: 250, dmg: 50, mdmg: 125, c: '#f1c40f', r: 550, as: 1.1, arm: 0.0 },
+            'FLORENTINO': { hp: 1300, m: 400, dmg: 75, mdmg: 180, c: '#d63031', r: 350, as: 0.8, arm: 0.75 },
+            'GORGGER': { hp: 550, m: 0, dmg: 200, mdmg: 500, c: '#e1b12c', r: 300, as: 2.5, arm: 0 },
+            'DUALATASATA': { hp: 1000, m: 0, dmg: 25, mdmg: 60, c: '#795548', r: 60, as: 0.8, arm: 0.25 },
+            'RUMBABARIAN': { hp: 1000, m: 2000, dmg: 75, mdmg: 180, c: '#c23616', r: 60, as: 0.8, arm: 0.25 },
+            'NEUSOLD': { hp: 500, m: 500, dmg: 50, mdmg: 100, c: '#485460', r: 100, as: 1.5, arm: 0 },
+            'ZIKU': { hp: 250, m: 350, dmg: 20, mdmg: 0, c: '#feca57', r: 550, as: 1.3, arm: 0 },
+        };
+        const c = cfgs[type];
+        this.maxHp = c.hp; this.hp = c.hp; this.maxMana = c.m; this.mana = c.m;
+        this.baseDmg = c.dmg; 
+        this.dmg = c.dmg; 
+        
+        this.baseMagicDmg = c.mdmg; // Biến phép gốc
+        this.magicDmg = c.mdmg;     // Biến phép thực tế
+
+        this.color = c.c;
+        this.baseRange = c.r;
+        this.armor = c.arm;
+        
+        this.atkCooldownBase = c.as; 
+        this.atkTimer = 0;
+        this.shield = 0; this.shieldTimer = 0;
+        this.specialCD = 0; this.specialMaxCD = 15;
+        this.regenTimer = 0;
+
+        this.isBarraging = false; 
+        this.barrageTimer = 0;
+        this.shotgunBurstCharges = 0;
+        this.shotgunBuffActive = false;
+        this.stunTimer = 0; 
+        this.luffyMode = false;
+        this.luffyGatlingTimer = 0;
+        this.asaggyQStage = 0; // 0: Lần 1, 1: Lần 2
+        this.asaggyQTimer = 0; // Đếm ngược 5s
+
+        this.akatsuS1Active = false; // Biến kiểm tra bật chiêu 1
+        
+        this.yornStacks = 0;   // Đếm số lần bắn thường
+        this.yornReady = false; // Trạng thái kích hoạt nội tại
+
+        // Biến riêng cho GORGGER
+        this.gorggerAmmo = 0; // Đếm số đòn đánh tăng tốc
+        this.gorggerMode = false; // Trạng thái Pháo Đài (Chiêu 3)
+        this.gorggerHealTimer = 0; // Bộ đếm hồi máu chiêu 3
+        
+        // Biến riêng cho Dualatasata
+        this.dualaRegenAmt = 0;
+        this.dualaRegenTime = 0;
+        this.dualaBuffs = [];
+
+        this.rumbaS1Timer = 0;      // Thời gian duy trì chiêu 1
+        this.rumbaS1Tick = 0;       // Đếm nhịp đấm chiêu 1
+        this.rumbaUltTimer = 0;     // Thời gian duy trì Ulti
+        this.rumbaUltTick = 0;      // Đếm nhịp đấm Ulti
+        this.isRumbaGuard = false;  // Cờ đánh dấu đang bật miễn thương 95%
+        
+        this.neusoldUltActive = false;
+        this.neusoldUltTimer = 0;
+        this.neusoldTickTimer = 0;
+
+        // ZIKU Variables
+        this.zikuBuffTimer = 0;   // Thời gian buff chiêu 2
+        this.zikuUltActive = false;
+        this.zikuUltCount = 0;    // Đếm số phi tiêu chiêu 3
+        this.zikuUltTimer = 0;    // Thời gian rải phi tiêu
+        this.zikuS1Active = false; // Trạng thái đang bắn chiêu 1
+        this.zikuS1Count = 0;      // Số lượng đạn còn lại
+        this.zikuS1Timer = 0;      // Thời gian chờ giữa các viên
+        
+        this.setupSkills(type);
+    }
+
+    setupSkills(type) {
+        const names = {
+            'ALENA': ['ĐẠI TIỄN', 'MƯA TÊN', 'CƯỜNG HÓA'],
+            'SNOW':   ['HÀN BĂNG', 'BÃO TUYẾT', 'KỶ BĂNG HÀ'],
+            'PARFAIT': ['CHÉM GIÓ', 'HỘ THỂ', 'LƯỚT ẢNH'],
+            'GONGUN': ['TĂNG TỐC', 'SẤY NÒNG', 'BÃO ĐẠN'],
+            'DURENAI': ['VÒNG SÉT', 'CẦU SÉT PHÂN TÁCH', 'LÔI CẦU'],
+            'SHOTGUN': ['NẠP ĐẠN', 'LƯỚT', 'XẢ ĐẠN'],
+            'LUFFY':   ['GOMU PISTOL', 'GATLING GUN', 'GEAR/HAKI'],
+            'MAGNES':  ['TẦM XA', 'MƯA ĐẠN', 'BOOMERANG KHỔNG LỒ'],
+            'ELLWITCH':['BOM ĐỘC', 'THUỐC LẮC', 'ĐỘC DƯỢC TỐI THƯỢNG'],
+            'SKULGEM': ['PHONG TRẢM', 'NHẤT KIẾM ĐOẠN', 'LÃNG KHÁCH'],
+            'VEMY':    ['LIÊN HOÀN TIÊU', 'SÁT THỦ ẤN', 'PHÂN THÂN'],
+            'CASTUS':  ['CÚ LƯỚT', 'ĐỊA CHẤN', 'KIẾM HỘ THỂ'],
+            'IMUZIK':  ['XUNG KÍCH', 'LIÊN HOÀN THƯƠNG', 'QUÉT SẠCH'],
+            'ASAGGY':  ['LƯỚT KÉP', 'HỘ THỂ ẨN', 'LIÊN HOÀN CƯỚC'],
+            'MAGGAZIC': ['SÓNG ÂM', 'XUA ĐUỔI', 'ĐẠI NHẠC HỘI'],
+            'AKATSU':  ['XUYÊN PHÁ', 'C4 HẸN GIỜ', 'MƯA BOM'],  
+            'YORNMAZIAN': ['TÊN NỔ', 'ĐẨY LÙI', 'VÙNG ĐẤT CHẾT'],
+            'FLORENTINO': ['HÀO HOA', 'THƯỞNG HOA', 'TÀI HOA'],
+            'GORGGER': ['BOM CHOÁNG', 'LƯỚT NẠP ĐẠN', 'PHÁO ĐÀI'],
+            'DUALATASATA': ['CÚ NHẢY', 'QUAY BÚA', 'SỨC SỐNG'],
+            'RUMBABARIAN': ['CỐ THỦ LIÊN QUYỀN', 'CÚ ĐẤM NGÀN CÂN', 'LIÊN HOÀN SÁT'],
+            'NEUSOLD': ['ĐOẠT HỒN', 'MÁY CHÉM', 'HÓA HỒN'],
+            'ZIKU': ['LIÊN HOÀN PHI TIÊU', 'LƯỚT ẢNH', 'BÃO PHI TIÊU'],
+        };
+        const manaCosts = {
+            'ALENA': [40, 70, 120],
+            'SNOW':   [40, 70, 120],
+            'PARFAIT': [30, 60, 100],
+            'GONGUN': [40, 60, 150],
+            'DURENAI': [50, 60, 120],
+            'SHOTGUN': [50, 40, 100],
+            'LUFFY':   [30, 60, 0],
+            'MAGNES':  [40, 50, 100],
+            'ELLWITCH': [50, 60, 120],
+            'SKULGEM':  [30, 80, 100],
+            'VEMY':     [40, 0, 100],
+            'CASTUS':   [40, 50, 100],
+            'IMUZIK':   [50, 80, 120],
+            'ASAGGY':   [30, 40, 60],
+            'MAGGAZIC': [40, 50, 100],
+            'AKATSU':   [125, 100, 200],
+            'YORNMAZIAN': [40, 50, 60],
+            'FLORENTINO': [40, 50, 0],
+            'GORGGER': [0, 0, 0],
+            'DUALATASATA': [0.05, 0.07, 0.25],
+            'RUMBABARIAN': [60, 80, 100],
+            'NEUSOLD': [30, 37, 150],
+            'ZIKU': [30, 40, 100],
+        };
+        const cdMax = {
+            'ALENA': [5, 3, 18],
+            'SNOW':   [8, 12, 20],
+            'PARFAIT': [4, 12, 8],
+            'GONGUN': [8, 15, 25],
+            'DURENAI': [10, 8, 20],
+            'SHOTGUN': [10, 6, 15],
+            'LUFFY':   [5, 12, 2],
+            'MAGNES':  [10, 8, 30],
+            'ELLWITCH': [7, 12, 25],
+            'SKULGEM':  [5, 15, 12],
+            'VEMY':     [6, 1, 30],
+            'CASTUS':   [8, 10, 25],
+            'IMUZIK':   [7, 10, 25],
+            'ASAGGY':   [3, 4, 5],
+            'MAGGAZIC': [6, 8, 20],
+            'AKATSU':   [5, 10, 15],
+            'YORNMAZIAN': [4, 8, 12],
+            'FLORENTINO': [4, 8, 30],
+            'GORGGER': [10, 17, 60],
+            'DUALATASATA': [6, 5, 32],
+            'RUMBABARIAN': [12, 10, 20],
+            'NEUSOLD': [10, 4, 30],
+            'ZIKU': [5, 8, 30],
+        };
+
+        this.skills = {
+            1: { n: names[type][0], cd: 0, max: cdMax[type][0], m: manaCosts[type][0] },
+            2: { n: names[type][1], cd: 0, max: cdMax[type][1], m: manaCosts[type][1] },
+            3: { n: names[type][2], cd: 0, max: cdMax[type][2], m: manaCosts[type][2] }
+        };
+        for(let i=1; i<=3; i++) document.getElementById(`s${i}-n`).innerText = this.skills[i].n;
+        
+        let specName = '';
+        if(this.special === 'SMITE') specName = 'TRỪNG TRỊ';
+        else if(this.special === 'HEAL') specName = 'HỒI MÁU';
+        else if(this.special === 'FREEZE') specName = 'ĐÓNG BĂNG';
+        else if(this.special === 'TURRET') specName = 'TIẾP VIỆN';
+        else if(this.special === 'TELEPORT') specName = 'TỐC BIẾN';
+        else if(this.special === 'RAGE') specName = 'CUỒNG NỘ';
+        else if(this.special === 'PROTECT') specName = 'BẢO VỆ';
+        
+        document.getElementById(`s4-n`).innerText = specName;
+    }
+
+    update(dt) {
+        let manaRegen = 15 + (this.maxMana * this.manaRegenPct);
+        if (this.type === 'NEUSOLD') manaRegen = 0; // Nội tại: Không tự hồi mana
+        if (this.type === 'ZIKU') {
+            // --- LOGIC MỚI CHIÊU 1: PHI LIÊN TIẾP ---
+            if (this.zikuS1Active) {
+                this.zikuS1Timer -= dt;
+                
+                // Nếu đến lúc bắn và còn đạn
+                if (this.zikuS1Timer <= 0 && this.zikuS1Count > 0) {
+                    // Tốc độ bắn phụ thuộc vào Tốc đánh (atkCooldownBase càng nhỏ thì bắn càng nhanh)
+                    // Chia 8 để bắn rất nhanh (ví dụ tốc gốc 1.3s -> interval = 0.16s)
+                    this.zikuS1Timer = Math.max(0.05, this.atkCooldownBase / 8); 
+                    
+                    this.zikuS1Count--;
+
+                    // Hướng bắn theo chuột hiện tại (để có thể liếc chuột)
+                    let aimAngle = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+
+                    // Tính toán sát thương
+                    let basePhys = this.dmg;
+                    if (this.zikuBuffTimer > 0) basePhys *= 1.2;
+
+                    let magicPart = (this.magicDmg * this.skillAmp) * 0.2;
+                    let isCrit = Math.random() < this.critRate;
+                    if (isCrit) magicPart *= (1 + this.critDamagePercent);
+
+                    // Tạo đạn bay thẳng
+                    projectiles.push(new Projectile(this.x, this.y, aimAngle, 1200, 0, 570, 12, 
+                        { 
+                            isSkill: true, 
+                            zikuShuriken: true, 
+                            hitCount: 0, 
+                            basePhys: basePhys,
+                            bonusMagic: magicPart,
+                            pierce: 999 
+                        }, 
+                        '#ff9f43', false));
+
+                    // Hết đạn thì tắt trạng thái
+                    if (this.zikuS1Count <= 0) this.zikuS1Active = false;
+                }
+            }
+            // Xử lý Buff chiêu 2 (Tốc chạy, Tốc đánh, DMG)
+            if (this.zikuBuffTimer > 0) {
+                this.zikuBuffTimer -= dt;
+                // Logic cộng chỉ số thực tế nằm ở phần tính toán finalSpeed và attack bên dưới
+                if (this.zikuBuffTimer <= 0) spawnFloatingText("BUFF ENDED", this.x, this.y, "#aaa");
+            }
+
+            // Xử lý Chiêu 3 (Bão đạn)
+            if (this.zikuUltActive) {
+                this.zikuUltTimer -= dt;
+                if (this.zikuUltTimer <= 0 && this.zikuUltCount > 0) {
+                    // Bắn phi tiêu cực nhanh (tổng 30 cái trong khoảng 3s -> 0.1s/cái)
+                    this.zikuUltTimer = 0.08; 
+                    this.zikuUltCount--;
+
+                    let randAngle = Math.random() * Math.PI * 2; // Random hướng
+
+                    // Tính toán sát thương giống Chiêu 1
+                    let basePhys = this.dmg;
+                    if (this.zikuBuffTimer > 0) basePhys *= 1.2; // Buff 20% dmg từ chiêu 2
+
+                    let magicPart = (this.magicDmg * this.skillAmp) * 0.2; // 20% phép
+                    // Phép có thể chí mạng
+                    let isCrit = Math.random() < this.critRate;
+                    if (isCrit) magicPart *= (1 + this.critDamagePercent);
+
+                    // Tạo Shuriken đặc biệt
+                    projectiles.push(new Projectile(this.x, this.y, randAngle, 1100, 0, this.baseRange + 50, 10, 
+                        { 
+                            isSkill: true, 
+                            zikuShuriken: true, // Cờ đánh dấu để tính sát thương giảm dần
+                            hitCount: 0, 
+                            basePhys: basePhys,
+                            bonusMagic: magicPart,
+                            pierce: 999 
+                        }, 
+                        '#feca57', false));
+            
+                    if (this.zikuUltCount <= 0) this.zikuUltActive = false;
+                }
+            }
+        }
+        // --- LOGIC RUMBABARIAN (Dán vào đầu hàm update) ---
+        if (this.type === 'NEUSOLD' && this.neusoldUltActive) {
+            this.neusoldUltTimer -= dt;
+            this.neusoldTickTimer -= dt;
+
+            // Cấu rỉa 10% phép mỗi 0.2s
+            if (this.neusoldTickTimer <= 0) {
+                this.neusoldTickTimer = 0.2;
+                let auraDmg = (this.magicDmg * this.skillAmp) * 0.25;
+                effects.push(new Explosion(this.x, this.y, 150, '#d2dae2')); // Visual
+        
+                let rangeSq = 150 * 150;        
+                enemies.forEach(e => {
+                    if (getDistSq(this, e) < rangeSq) {
+                        this.applyHit(e, auraDmg, {isSkill: true});
+                    }
+                });
+            }
+
+            // Kết thúc Ulti
+            if (this.neusoldUltTimer <= 0) {
+                this.neusoldUltActive = false;
+                // Tăng 50% tốc chạy trong 3s
+                this.speedMod += (this.speedBase * 0.5);
+                spawnFloatingText("SPEED UP!", this.x, this.y, "#fff");
+                setTimeout(() => { 
+                    this.speedMod -= (this.speedBase * 0.5); 
+                }, 3000);
+            }
+        }
+        if (this.type === 'RUMBABARIAN') {
+            // Xử lý Chiêu 1: Cấm di chuyển, Đấm liên tục
+            if (this.rumbaS1Timer > 0) {
+                this.rumbaS1Timer -= dt;
+                this.isRumbaGuard = true; 
+        
+                // Tốc độ đấm gấp đôi tốc đánh thường
+                let punchSpeed = (this.atkCooldownBase / 2);
+                if (this.bonusAtkSpeed > 0) punchSpeed /= 2;
+
+                this.rumbaS1Tick -= dt;
+                if (this.rumbaS1Tick <= 0) {
+                    this.rumbaS1Tick = punchSpeed;
+                    // Thực hiện đấm (Logic giống đánh thường nhưng gây dmg phép)
+                    let a = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+                    let range = this.baseRange + this.atkRangeMod;
+                    let dmg = this.magicDmg * this.skillAmp * 0.2; // 20% sát thương phép
+            
+                    effects.push(new SlashEffect(this.x, this.y, a, range, true)); // Hiệu ứng visual
+            
+                    // Tìm mục tiêu gần nhất trước mặt
+                    let closest = null; let minDist = range*range;
+                    enemies.forEach(e => {
+                        let d = getDistSq(this, e);
+                        if (d < minDist) {
+                            // Kiểm tra góc (chỉ đấm phía trước)
+                            let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                            let diff = Math.abs(eAng - a);
+                            if (diff > Math.PI) diff = 2 * Math.PI - diff;
+                            if (diff < 1.0) { minDist = d; closest = e; }
+                        }
+                    });
+            
+                    if (closest) {
+                        // Đẩy lùi 100 đơn vị
+                        let pushAng = Math.atan2(closest.y - this.y, closest.x - this.x);
+                        this.applyHit(closest, dmg, {isSkill: true, status: 'KNOCKBACK', knockbackForce: 100, knockbackAngle: pushAng});
+                        spawnFloatingText("ORA!", closest.x, closest.y, "#fff");
+                    }
+                }
+                if (this.rumbaS1Timer <= 0) { this.isRumbaGuard = false; }
+            }
+
+            // Xử lý Chiêu 3: Cấm di chuyển, Đấm xuyên thấu
+            if (this.rumbaUltTimer > 0) {
+                this.rumbaUltTimer -= dt;
+                this.rumbaUltTick -= dt;
+        
+                if (this.rumbaUltTick <= 0) {
+                    this.rumbaUltTick = 0.15; // Mỗi 0.15s gây dmg
+            
+                    let a = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+                    let dmg = this.magicDmg * this.skillAmp * 0.2; // 20% sát thương phép
+                    let range = 220; // Tầm xa hơn thường
+            
+                    // Tạo đạn ảo bay xuyên thấu (để check hit xuyên)
+                    // Góc rộng hơn Imuzik một chút (Imuzik là đâm thẳng, đây là đấm nên cho spread nhẹ)
+                    let spread = (Math.random() - 0.5) * 0.5; 
+            
+                    projectiles.push(new Projectile(this.x, this.y, a + spread, 1500, dmg, range, 30, 
+                        { isSkill: true, pierce: 999, status: 'SLOW' }, // Slow 50% có sẵn trong logic applyHit nếu status='SLOW'
+                    'rgba(194, 54, 22, 0.5)', false));
+
+                    // Hiệu ứng đấm
+                    effects.push(new SlashEffect(this.x, this.y, a + spread, range, true));
+                }
+            }
+        }
+        if (this.type === 'DUALATASATA') {
+            // Duyệt qua danh sách các buff đang hoạt động
+            for (let i = this.dualaBuffs.length - 1; i >= 0; i--) {
+                let buff = this.dualaBuffs[i];
+        
+                // Hồi máu theo tốc độ của buff này
+                this.hp = Math.min(this.maxHp, this.hp + buff.rate * dt);
+        
+                // Trừ thời gian hiệu lực
+                buff.time -= dt;
+        
+                // Nếu hết giờ thì xóa buff khỏi danh sách
+                if (buff.time <= 0) {
+                    this.dualaBuffs.splice(i, 1);
+                }
+            }
+        }
+        if (this.type === 'GORGGER' && this.gorggerMode) {
+            // Logic hồi máu
+            this.gorggerHealTimer -= dt;
+            if (this.gorggerHealTimer <= 0) {
+                this.hp = Math.min(this.maxHp, this.hp + (this.maxHp * 0.05)); // Hồi 5%/s
+                spawnFloatingText("+5%", this.x, this.y, "#2ecc71");
+                this.gorggerHealTimer = 1.0;
+            }
+            // Nếu khiên vỡ thì tắt mode
+            if (this.shield <= 0) this.toggleGorggerMode(false);
+        } 
+        // Xóa phần else if, không cần chỉnh lại speedMod ở đây nữa
+        this.mana = Math.min(this.maxMana, this.mana + manaRegen * dt);
+        if(this.hpRegen > 0) this.hp = Math.min(this.maxHp, this.hp + this.hpRegen * dt);
+        
+        if (this.imuzikUltTimer > 0) {
+            this.imuzikUltTimer -= dt;
+            // IMUZIK: Ult hồi 5% lifesteal (tính vào buff ảo hoặc cộng thẳng)
+            // Lifesteal sẽ được tính trong logic damage
+        }
+        if (this.imuzikImmunityTimer > 0) this.imuzikImmunityTimer -= dt;
+
+        if(this.shield > 0) { 
+            if ((this.type !== 'SKULGEM' && this.type !== 'CASTUS') || this.shieldTimer > 0) {
+                 this.shieldTimer -= dt; if(this.shieldTimer <= 0) this.shield = 0; 
+            }
+            if (this.type === 'CASTUS' && this.shieldTimer > 0) {
+                this.shieldTimer -= dt; if(this.shieldTimer <= 0) this.shield = 0;
+            }
+        }
+
+        // Skulgem Passive Logic
+        if (this.type === 'SKULGEM') {
+            this.skulgemPassiveTimer -= dt;
+            if (this.skulgemPassiveTimer <= 0) {
+                if (this.shield < 200) {
+                    this.shield = Math.min(200, this.shield + 150);
+                    spawnFloatingText("PASSIVE: SHIELD UP", this.x, this.y, "#7efff5");
+                }
+                this.skulgemPassiveTimer = 10;
+            }
+        }
+        
+        // VEMY Passive Logic (Auto Skill 2)
+        if (this.type === 'VEMY') {
+            let rangeSq = 160 * 160; 
+            let isEnemyNear = false;
+            for (let e of enemies) {
+                if (getDistSq(this, e) < rangeSq) { isEnemyNear = true; break; }
+            }
+            this.vemyS2Active = isEnemyNear;
+            if(this.vemyS2Active && Math.random() < 0.1) {
+                effects.push(new Explosion(this.x + (Math.random()-0.5)*20, this.y + (Math.random()-0.5)*20, 10, '#686de0'));
+            }
+        }
+
+        if(this.specialCD > 0) this.specialCD -= dt;
+        if(this.regenTimer > 0) {
+            this.regenTimer -= dt;
+            this.hp = Math.min(this.maxHp, this.hp + (this.maxHp * 0.05) * dt); 
+        }
+
+        if (this.rageActive) {
+            this.rageTimer -= dt;
+            let healTick = (this.maxHp * 0.05 / 3) * dt;
+            this.hp = Math.min(this.maxHp, this.hp + healTick);
+            if (this.rageTimer <= 0) this.rageActive = false;
+        }
+        if (this.protectActive) {
+            this.protectTimer -= dt;
+            let auraRangeSq = 300 * 300; 
+            for (let e of enemies) {
+                if (getDistSq(this, e) < auraRangeSq) { e.slowTimer = 0.2; e.slowPercent = 0.25; }
+            }
+            if (this.protectTimer <= 0) this.protectActive = false;
+        }
+        
+        if (this.ellwitchBuffTimer > 0) {
+            this.ellwitchBuffTimer -= dt;
+        }
+
+        if (this.luffyMode) {
+            let drain = this.maxMana * 0.15 * dt; 
+            this.mana -= drain;
+            if (this.mana <= 0) { this.mana = 0; this.toggleLuffyMode(false); }
+            let auraRangeSq = 250 * 250;
+            let auraDmg = this.dmg * 0.5 * dt; 
+            for(let e of enemies) {
+                if(getDistSq(this, e) < auraRangeSq) { e.takeDamage(auraDmg); e.slowTimer = 0.2; e.slowPercent = 0.5; }
+            }
+        }
+        
+        if (this.luffyGatlingTimer > 0) this.luffyGatlingTimer -= dt;
+        if (this.stunTimer > 0) { this.stunTimer -= dt; return; }
+        if (this.isBarraging) { this.barrageTimer -= dt; if (this.barrageTimer <= 0) this.isBarraging = false; }
+
+        let dx=0, dy=0;
+        if(keys.w) dy--; if(keys.s) dy++; if(keys.a) dx--; if(keys.d) dx++;
+        if (this.type === 'GORGGER' && this.gorggerMode) { dx = 0; dy = 0; }
+        if (this.type === 'RUMBABARIAN' && (this.rumbaS1Timer > 0 || this.rumbaUltTimer > 0)) { 
+            dx = 0; dy = 0; 
+        }
+        let finalSpeed = this.speedBase + this.speedMod;
+        if (this.type === 'ZIKU') {
+            // Nếu có buff chiêu 2: +20% tốc
+            if (this.zikuBuffTimer > 0) finalSpeed += (this.speedBase * 0.2);
+    
+            // Nếu đang dùng chiêu 3: Tốc độ chỉ còn 25% (Giảm 75%)
+            // QUAN TRỌNG: Dùng phép nhân để không bao giờ bị âm
+            if (this.zikuUltActive) finalSpeed *= 0.25; 
+        }
+        if (this.ellwitchBuffTimer > 0) finalSpeed += (this.speedBase * 0.2); 
+        // IMUZIK: Ult buff 100% speed
+        if (this.type === 'IMUZIK' && this.imuzikUltTimer > 0) finalSpeed += this.speedBase; 
+
+        if (this.isBarraging) finalSpeed *= 0.5;
+
+        if(dx||dy) {
+            let l = Math.hypot(dx,dy);
+            this.x += (dx/l)*finalSpeed*dt; this.y += (dy/l)*finalSpeed*dt;
+        }
+        this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20));
+        this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+
+        if(this.atkTimer > 0) this.atkTimer -= dt;
+        
+        let actualCD = this.atkCooldownBase;
+        if (this.bonusAtkSpeed > 0) { actualCD /= 2; this.bonusAtkSpeed -= dt; }
+        if (this.ellwitchBuffTimer > 0) { actualCD /= 1.2; } 
+        if (this.shotgunBurstCharges > 0) actualCD /= 2;
+
+        if(mouse.down && this.atkTimer <= 0 && !this.isBarraging && this.luffyGatlingTimer <= 0) { 
+            this.attack(); 
+            this.atkTimer = actualCD; 
+            if (this.shotgunBurstCharges > 0) this.shotgunBurstCharges--;
+        }
+        
+        for(let i in this.skills) if(this.skills[i].cd > 0) this.skills[i].cd -= dt;
+        this.updateUI();
+
+        if (this.type === 'ASAGGY' && this.asaggyQStage === 1) {
+            this.asaggyQTimer -= dt;
+            // Nếu hết 5s mà không dùng lần 2 -> Reset về 0 và tính hồi chiêu
+            if (this.asaggyQTimer <= 0) {
+                this.asaggyQStage = 0;
+                this.skills[1].cd = this.skills[1].max; // Bắt đầu đếm cooldown
+                spawnFloatingText("Q RESET", this.x, this.y, "#7f8c8d");
+            }
+        }
+    }
+
+    attack() {
+        const angle = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+        let isCrit = Math.random() < this.critRate;
+        let baseDmgVal = this.dmg;
+        
+        if (this.luffyMode) baseDmgVal *= 3.5; 
+        if (this.rageActive) baseDmgVal *= 1.25; 
+        
+        if (this.type === 'VEMY' && this.vemyS2Active) {
+            baseDmgVal *= 1.2;
+        }
+
+        let finalDmg = baseDmgVal;
+        if (isCrit) {
+            // Công thức: Sát thương gốc + (Sát thương gốc x % Sát thương chí mạng)
+            finalDmg = baseDmgVal * 2 + ( this.dmg * this.critDamagePercent);
+        }
+        let range = this.baseRange + this.atkRangeMod; 
+        let doSplash = (this.splashChance > 0 && Math.random() < this.splashChance) ? 100 : 0;
+        let hitProps = { pierce: 1, isCrit: isCrit, splash: doSplash, isSkill: false, splashRatio: this.splashDmgRatio };
+
+        if (this.type === 'GONGUN' && this.bonusAtkSpeed > 0) hitProps.pierce = 2; 
+
+        if (this.type === 'ELLWITCH') {
+            hitProps.pierce = 1; 
+            hitProps.onHit = 'SPAWN_POISON';
+            hitProps.isCrit = false;
+            projectiles.push(new Projectile(this.x, this.y, angle, 900, 0, range, 10, hitProps, '#009432', false));
+        }
+        else if (this.type === 'SHOTGUN') {
+            let bulletDmg = (baseDmgVal * 0.125);
+            if (this.shotgunBuffActive) bulletDmg += 5; 
+            if (isCrit) bulletDmg *= 2;
+            if (this.shotgunBurstCharges > 0) hitProps.pierce = 999; 
+            for(let i=0; i<8; i++) {
+                let spread = (Math.random() - 0.5) * 0.15;
+                let speed = 1100 + (Math.random()*100);
+                projectiles.push(new Projectile(this.x, this.y, angle + spread, speed, bulletDmg, range, 4, {...hitProps}, this.color, false));
+            }
+        } else if (this.type === 'LUFFY') {
+            hitProps.pierce = 999;
+            hitProps.onHit = 'LUFFY_PUNCH'; 
+            hitProps.firstHit = true;
+            hitProps.damageMain = finalDmg;
+            projectiles.push(new Projectile(this.x, this.y, angle, 900, finalDmg, range, 20, hitProps, 'rgba(0,0,0,0)', false));
+            effects.push(new SlashEffect(this.x, this.y, angle, range, true)); 
+        } else if (this.type === 'IMUZIK') {
+            // IMUZIK: Bị khựng 0.5s
+            this.stunTimer = 0.3;
+
+            // Tính toán khoảng cách tới chuột để scale damage
+            let distToMouse = Math.sqrt((mouse.worldX - this.x)**2 + (mouse.worldY - this.y)**2);
+            let effectiveDist = Math.min(distToMouse, range);
+            
+            // Công thức scale: Min 80% dmg (gần), Max 150% dmg (xa)
+            let scale = 0.2 + (effectiveDist / range) * 1.8; 
+            finalDmg *= scale;
+
+            hitProps.pierce = 999;
+            hitProps.onHit = 'LUFFY_PUNCH'; // Dùng chung logic punch (xuyên thấu) của Luffy cho tiện
+            hitProps.firstHit = true;
+            hitProps.damageMain = finalDmg;
+
+            // Tốc độ bay của giáo nhanh hơn nắm đấm
+            projectiles.push(new Projectile(this.x, this.y, angle, 1200, finalDmg, range, 15, hitProps, 'rgba(0,0,0,0)', false));
+            
+            // Hiệu ứng giáo đâm (tương tự SlashEffect nhưng màu khác)
+            let spearEff = new SlashEffect(this.x, this.y, angle, range, true);
+            spearEff.color = '#b0bec5';
+            effects.push(spearEff);
+
+        } else if (this.type === 'DURENAI') {
+            let rangeSq = range * range;
+            let closest = null; let minDist = Infinity;
+            let potentialTargets = [...enemies, ...objects.filter(o => o instanceof Chest)];
+            potentialTargets.forEach(e => {
+                if (getDistSq(this, e) <= rangeSq) {
+                    let dMouse = getDistSq(e, {x: mouse.worldX, y: mouse.worldY});
+                    if (dMouse < minDist) { minDist = dMouse; closest = e; }
+                }
+            });
+            if (closest) {
+                this.applyHit(closest, finalDmg, hitProps);
+                effects.push(new LightningBolt(this.x, this.y, closest.x, closest.y));
+                let current = closest; let hitList = [closest];
+                for(let i=0; i<3; i++) {
+                    let nextTarget = null; let nextDist = Infinity; let chainRangeSq = 300*300; 
+                    potentialTargets.forEach(e => {
+                        if (!hitList.includes(e)) {
+                            let d = getDistSq(current, e);
+                            if (d < chainRangeSq && d < nextDist) { nextDist = d; nextTarget = e; }
+                        }
+                    });
+                    if (nextTarget) {
+                        this.applyHit(nextTarget, finalDmg * 0.5, hitProps);
+                        effects.push(new LightningBolt(current.x, current.y, nextTarget.x, nextTarget.y));
+                        hitList.push(nextTarget); current = nextTarget;
+                    } else { break; }
+                }
+            }
+        } else if(this.type === 'PARFAIT' || this.type === 'SKULGEM') {
+            effects.push(new SlashEffect(this.x, this.y, angle, range, false));
+            let targets = []; let rangeSq = (range + 30)**2;
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rangeSq) {
+                    let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                    let diff = Math.abs(eAng - angle);
+                    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+                    if (diff < 1.5) targets.push(e); 
+                }
+            });
+            objects.forEach(o => { if(o instanceof Chest && getDistSq(this, o) < rangeSq) this.applyHit(o, finalDmg, hitProps); });
+            if (targets.length > 0) {
+                targets.sort((a, b) => Math.abs(Math.atan2(a.y - this.y, a.x - this.x) - angle) - Math.abs(Math.atan2(b.y - this.y, b.x - this.x) - angle));
+                this.applyHit(targets[0], finalDmg, hitProps);
+                for (let i = 1; i < targets.length; i++) this.applyHit(targets[i], finalDmg * 0.2, hitProps);
+            }
+        } else if (this.type === 'MAGNES') {
+            hitProps.pierce = 999;
+            hitProps.isBoomerang = true;
+            hitProps.hitList = [];
+            projectiles.push(new Projectile(this.x, this.y, angle, 900, finalDmg, range, 12, hitProps, this.color, false));
+        } else if (this.type === 'ASAGGY') {
+            // Đánh thường ASAGGY (Tầm 90)
+            effects.push(new SlashEffect(this.x, this.y, angle, range, false));
+            let targets = []; let rangeSq = (range + 20)**2;
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rangeSq) {
+                    let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                    let diff = Math.abs(eAng - angle);
+                    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+                    if (diff < 1.5) targets.push(e); 
+                }
+            });
+            objects.forEach(o => { if(o instanceof Chest && getDistSq(this, o) < rangeSq) targets.push(o); });
+    
+            if (targets.length > 0) {
+                // Ưu tiên mục tiêu gần nhất
+                targets.sort((a, b) => getDistSq(this, a) - getDistSq(this, b));
+                this.applyHit(targets[0], finalDmg, hitProps);
+            }
+        } else if (this.type === 'VEMY') {
+            this.vemyAtkCount++;
+            let isEmpowered = (this.vemyAtkCount % 3 === 0);
+            
+            if (isEmpowered) {
+                hitProps.pierce = 999;
+                spawnFloatingText("PIERCE!", this.x, this.y, "#a29bfe");
+                projectiles.push(new Projectile(this.x, this.y, angle, 1100, finalDmg, range + 100, 10, hitProps, '#fff', false));
+            } else {
+                projectiles.push(new Projectile(this.x, this.y, angle, 1100, finalDmg, range, 6, hitProps, this.color, false));
+            }
+        
+        } else if (this.type === 'MAGGAZIC') {
+            // Đánh thường: Gây sát thương tròn xung quanh, khựng 0.25s
+            this.stunTimer = 0.25; 
+    
+            // Tầm đánh thực tế
+            let effRange = this.baseRange + this.atkRangeMod;
+            let rangeSq = effRange * effRange;
+    
+            // Hiệu ứng nổ tròn
+            effects.push(new Explosion(this.x, this.y, effRange, this.color));
+            spawnFloatingText("BEAT!", this.x, this.y, "#d980fa");
+
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rangeSq) {
+                    this.applyHit(e, finalDmg, hitProps);
+                }
+            });
+            // Đánh cả rương
+            objects.forEach(o => { if(o instanceof Chest && getDistSq(this, o) < rangeSq) this.applyHit(o, finalDmg, hitProps); });
+
+        } else if (this.type === 'CASTUS') {
+            // CASTUS đánh thường
+            let isS1 = this.castusS1Active;
+            if (isS1) {
+                finalDmg *= 2; 
+                hitProps.status = 'STUN';
+                spawnFloatingText("SMASH!", this.x, this.y, "#a1887f");
+            }
+            effects.push(new SlashEffect(this.x, this.y, angle, range, false));
+            
+            let targets = []; let rangeSq = (range + 20)**2;
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rangeSq) {
+                    let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                    let diff = Math.abs(eAng - angle);
+                    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+                    if (diff < 1.5) targets.push(e); 
+                }
+            });
+             objects.forEach(o => { if(o instanceof Chest && getDistSq(this, o) < rangeSq) targets.push(o); });
+
+            if (targets.length > 0) {
+                targets.sort((a, b) => Math.abs(Math.atan2(a.y - this.y, a.x - this.x) - angle) - Math.abs(Math.atan2(b.y - this.y, b.x - this.x) - angle));
+                let mainTarget = targets[0];
+                this.applyHit(mainTarget, finalDmg, hitProps);
+                if (isS1) mainTarget.stunTimer = 1.5;
+
+                let explosionDmg = this.dmg * 0.15;
+                let splashRadiusSq = 100 * 100;
+                effects.push(new Explosion(mainTarget.x, mainTarget.y, 100, 'rgba(121, 85, 72, 0.5)'));
+                enemies.forEach(e => {
+                    if (e !== mainTarget && getDistSq(mainTarget, e) < splashRadiusSq) {
+                        this.applyHit(e, explosionDmg, { isSkill: false, splash: 0 });
+                    }
+                });
+            }
+            if (isS1) this.castusS1Active = false;
+        } else if (this.type === 'YORNMAZIAN') {
+            if (this.yornReady) {
+                // --- KÍCH HOẠT NỘI TẠI: BẮN 7 TIA ---
+                this.stunTimer = 0.7; // Bị khựng 0.7s
+                this.yornReady = false; // Reset nội tại
+                this.yornStacks = 0;    // Reset tích lũy
+        
+                spawnFloatingText("PASSIVE: BARRAGE!", this.x, this.y, "#f1c40f");
+
+                let shotCount = 0;
+                let totalShots = 7;
+                let interval = 0.7 / 7; // Tổng thời gian 0.7s
+
+                let barrageInt = setInterval(() => {
+                    if (!gameActive || shotCount >= totalShots) { clearInterval(barrageInt); return; }
+
+                    // Cập nhật lại góc bắn theo chuột hiện tại (hoặc giữ góc cũ nếu muốn cứng)
+                    let curA = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+            
+                    // Sát thương 9 (có thể cộng thêm % dmg nếu muốn mạnh hơn, ở đây để 9 theo yêu cầu)
+                    let dmgPerHit = (this.dmg * 0.145) + (this.critDamagePercent * this.dmg);
+            
+                    // Đạn bay xuyên thấu (pierce: 999)
+                    projectiles.push(new Projectile(this.x, this.y, curA, 1500, dmgPerHit, range + 100, 6, 
+                        { pierce: 999, isCrit: isCrit }, '#fff', false));
+            
+                    shotCount++;
+                }, interval * 1000); // Đổi sang ms
+
+            } else {
+                // --- ĐÁNH THƯỜNG ---
+                // Bắn 1 mũi tên cơ bản
+                projectiles.push(new Projectile(this.x, this.y, angle, 1200, finalDmg, range, 6, hitProps, this.color, false));
+        
+                // Tích nội tại
+                this.yornStacks++;
+                if (this.yornStacks >= 4) {
+                    this.yornReady = true;
+                    spawnFloatingText("PASSIVE READY!", this.x, this.y, "#f1c40f");
+                }
+            }
+        } else if (this.type === 'AKATSU') {
+            // Mặc định xuyên 3, nếu bật skill 1 thì xuyên 999
+            let pierceCount = this.akatsuS1Active ? 999 : 3;
+            let bulletColor = this.akatsuS1Active ? '#ff0000' : this.color; // Đạn đỏ nếu cường hóa
+            let speed = 1500; // Tốc độ đạn AWM siêu nhanh
+
+            // Hiệu ứng chữ
+            spawnFloatingText(this.akatsuS1Active ? "FULL PIERCE!" : "BANG!", this.x, this.y, bulletColor);
+
+            let hitProps = { pierce: pierceCount, isCrit: false, splash: 0, isSkill: false };
+
+            // Bắn đạn
+            projectiles.push(new Projectile(this.x, this.y, angle, speed, finalDmg, range, 8, hitProps, bulletColor, false));
+
+            // Sau khi bắn xong viên cường hóa thì tắt trạng thái
+            if (this.akatsuS1Active) {
+                this.akatsuS1Active = false;
+            }
+        } else if (this.type === 'FLORENTINO') {
+            // Tìm mục tiêu trong tầm đánh
+            let rangeSq = range * range;
+            let target = null;
+            let minDist = rangeSq;
+    
+            // Ưu tiên tướng địch
+            for (let e of enemies) {
+                let d = getDistSq(this, e);
+                if (d < minDist) { minDist = d; target = e; }
+            }
+            // Nếu không có tướng thì tìm rương
+            if (!target) {
+                for (let o of objects) {
+                    if (o instanceof Chest && getDistSq(this, o) < rangeSq) { target = o; break; }
+                }
+            }
+
+            if (target) {
+                // 1. Lướt tới mục tiêu (Gây sát thương)
+                this.x = target.x + (Math.random()-0.5)*20; // Áp sát
+                this.y = target.y + (Math.random()-0.5)*20;
+
+                // Hiệu ứng chém
+                effects.push(new SlashEffect(this.x, this.y, angle, 50, false));
+        
+                // Gây sát thương + Hút máu 100%
+                let lifeStealAmt = finalDmg * 1.0; // 100% hút máu
+                this.applyHit(target, finalDmg, {isSkill: false, isCrit: isCrit});
+                this.hp = Math.min(this.maxHp, this.hp + lifeStealAmt);
+                spawnFloatingText(`+${Math.round(lifeStealAmt)}`, this.x, this.y, "#2ecc71");
+
+                // 2. Lướt về phía chỉ định (Chuột) sau khi đánh
+                let dashOutDist = 200; // Đoạn lướt ra
+                let dashAngle = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+                this.x += Math.cos(dashAngle) * dashOutDist;
+                this.y += Math.sin(dashAngle) * dashOutDist;
+        
+                // Giới hạn bản đồ
+                this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20));
+                this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+        
+                spawnFloatingText("LUNGE!", this.x, this.y, "#ff7675");
+            } else {
+                // Đánh thường vào không khí nếu không có mục tiêu (để giữ cảm giác mượt)
+                effects.push(new SlashEffect(this.x, this.y, angle, 50, false));
+            }
+        }
+        else if (this.type === 'GORGGER') {
+            // Xử lý đòn đánh tăng tốc (Chiêu 2)
+            let speedFactor = 1.0;
+            if (this.gorggerAmmo > 0) {
+                this.gorggerAmmo--;
+                // Tốc đánh nhanh thì đạn bay nhanh hơn chút cho mượt
+                speedFactor = 1.5; 
+                if (this.gorggerAmmo === 0) {
+                    // Reset tốc đánh về bình thường sau khi bắn hết 3 viên
+                    // (Logic giảm cooldown thực tế nằm ở hàm castSkill 2)
+                    this.atkCooldownBase = 2.5; 
+                    spawnFloatingText("NORMAL SPD", this.x, this.y, "#aaa");
+                }
+            }
+
+            // Đạn nổ: 100% mục tiêu chính, 50% xung quanh (splashRatio: 0.5)
+            // r=75 (Explosion Radius)
+            hitProps.splash = 100; // 100% tỷ lệ nổ
+            hitProps.splashRatio = 0.5; // Dame lan 50%
+            hitProps.splashRadius = 75; // Bán kính nổ (Cần update logic applyHit nhận biến này hoặc mặc định) -> Ở đây ta dùng trick
+    
+            // Bắn đạn
+            projectiles.push(new Projectile(this.x, this.y, angle, 900 * speedFactor, finalDmg, range, 12, hitProps, '#e1b12c', false));
+    
+            // Hiệu ứng giật lùi nhẹ tạo cảm giác lực
+            this.x -= Math.cos(angle) * 2; this.y -= Math.sin(angle) * 2;
+        } else if (this.type === 'DUALATASATA') {
+            // Hiệu ứng chém (như Castus)
+            effects.push(new SlashEffect(this.x, this.y, angle, range, false));
+    
+            // Tìm mục tiêu trong tầm quét
+            let targets = []; 
+            let rangeSq = (range + 30)**2; // Tăng nhẹ tầm đánh thực tế
+    
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rangeSq) {
+                    // Kiểm tra góc đánh (hình nón phía trước mặt)
+                    let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                    let diff = Math.abs(eAng - angle);
+                    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+                    if (diff < 1.5) targets.push(e); // Góc quét khoảng 90 độ
+                }
+            });
+            // Đánh cả rương
+            objects.forEach(o => { if(o instanceof Chest && getDistSq(this, o) < rangeSq) targets.push(o); });
+
+            // Gây sát thương
+            if (targets.length > 0) {
+                // Đánh lan 100% sát thương cho tất cả mục tiêu trúng đòn
+                targets.forEach(t => {
+                    this.applyHit(t, finalDmg, hitProps);
+                });
+                spawnFloatingText("BONK!", this.x + Math.cos(angle)*40, this.y + Math.sin(angle)*40, "#795548");
+            }
+        }
+        else if (this.type === 'RUMBABARIAN') {
+            // Đánh thường: Chỉ 1 mục tiêu gần nhất, đẩy lùi
+            let target = null;
+            let minDist = range * range;
+    
+            // Tìm kẻ địch gần nhất trong tầm
+            enemies.forEach(e => {
+                let d = getDistSq(this, e);
+                if (d < minDist) {
+                    // Kiểm tra góc (chỉ đánh phía trước mặt)
+                    let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                    let diff = Math.abs(eAng - angle);
+                    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+
+                    if (diff < 1.2) { // Góc đánh
+                        minDist = d; 
+                        target = e; 
+                    }
+                }
+            });
+
+            // Ưu tiên rương nếu không có quái
+            if (!target) {
+                for(let o of objects) {
+                    if(o instanceof Chest && getDistSq(this, o) < range*range) { target = o; break; }
+                }
+            }
+
+            // Hiệu ứng đấm
+            effects.push(new SlashEffect(this.x, this.y, angle, range, true));
+
+            if (target) {
+                // Đẩy lùi 100
+                let pushAng = Math.atan2(target.y - this.y, target.x - this.x);
+                this.applyHit(target, finalDmg, { 
+                    pierce: 1, 
+                    isCrit: isCrit, 
+                    status: 'KNOCKBACK', 
+                    knockbackForce: 100, 
+                    knockbackAngle: pushAng 
+                });
+                spawnFloatingText("PUNCH!", target.x, target.y, "#fff");
+            }
+        } else if (this.type === 'ZIKU') {
+            // Đánh thường + Nội tại giật sét
+            // Nếu đang buff chiêu 2 thì dmg to hơn
+            if (this.zikuBuffTimer > 0) finalDmg *= 1.2;
+    
+            // Tăng tốc đánh nếu có buff (giảm delay đòn sau)
+            if (this.zikuBuffTimer > 0) this.atkTimer /= 1.2;
+
+            hitProps.onHit = 'ZIKU_PASSIVE'; // Đánh dấu để kích hoạt nội tại
+            projectiles.push(new Projectile(this.x, this.y, angle, 1300, finalDmg, range, 8, hitProps, this.color, false));
+        }
+        else {
+            // Dành cho ALENA, SNOW, GONGUN
+            if (this.type === 'SNOW') hitProps.status = 'SLOW';
+            projectiles.push(new Projectile(this.x, this.y, angle, 1200, finalDmg, range, 6, hitProps, this.color, false));
+        } 
+        
+        
+        
+    }
+
+    applyHit(target, damage, props) {
+        if (damage > 0) {
+            heroTotalDmg += damage;
+            if (props.isSkill) heroSkillDmg += damage;
+            else heroPhysDmg += damage;
+        }
+
+        if (damage > 0) {
+            target.takeDamage(damage);
+            let effectiveLifesteal = this.lifesteal;
+            if (this.type === 'IMUZIK' && this.imuzikUltTimer > 0) effectiveLifesteal += 0.05; // Imuzik Ult: +5% lifesteal
+
+            if(!props.isSkill && effectiveLifesteal > 0 && !(target instanceof Chest)) this.hp = Math.min(this.maxHp, this.hp + damage * effectiveLifesteal);
+            if(props.isSkill && this.spellVamp > 0 && !(target instanceof Chest)) this.hp = Math.min(this.maxHp, this.hp + damage * this.spellVamp);
+        }
+
+        if (props.status === 'FREEZE') target.freezeTimer = 1.0; 
+        if (props.status === 'SLOW') { target.slowTimer = 0.5; target.slowPercent = 0.5; }
+        if (props.status === 'STUN') { target.freezeTimer = Math.max(target.freezeTimer, props.stunDur || 1.5); } // Sử dụng freezeTimer làm stun
+
+        if (props.status === 'KNOCKBACK') {
+            target.x += Math.cos(props.knockbackAngle) * (props.knockbackForce || 20);
+            target.y += Math.sin(props.knockbackAngle) * (props.knockbackForce || 20);
+        }
+        
+        if(!props.isSkill && props.splash > 0 && damage > 0) {
+            let rSplash = 100; let splashSq = rSplash * rSplash;
+            let splashDmg = damage * (props.splashRatio || 0.25);
+            for(let e of enemies) { if(e !== target && getDistSq(target, e) < splashSq) e.takeDamage(splashDmg); }
+            effects.push(new Explosion(target.x, target.y, rSplash, 'rgba(231, 76, 60, 0.6)'));
+        }
+        if(props.isCrit && damage > 0) spawnFloatingText("CRIT!", target.x, target.y, "#f39c12");
+    }
+
+castSkill(key) {
+    if (this.type === 'NEUSOLD' && this.neusoldUltActive) {
+        spawnFloatingText("SOUL FORM!", this.x, this.y, "#888");
+        return;
+    }
+    const s = this.skills[key]; 
+    
+    // --- XỬ LÝ ĐẶC BIỆT: LUFFY GEAR (SKILL 3) ---
+    if (this.type === 'LUFFY' && key === 3) {
+        if (this.luffyMode) { 
+            this.toggleLuffyMode(false); 
+            s.cd = s.max; 
+        } else {
+            if (s.cd > 0 || this.mana < 150) { 
+                if(this.mana < 150) spawnFloatingText("NEED 150 MANA", this.x, this.y, "red"); 
+                return; 
+            }
+            this.toggleLuffyMode(true);
+        }
+        return;
+    }
+
+    // --- KIỂM TRA HỒI CHIÊU VÀ MANA ---
+    if (this.type === 'DUALATASATA') {
+        if (s.cd > 0) return;
+    } else {
+        // Các tướng khác check bình thường
+        if (s.cd > 0 || this.mana < s.m) return;
+    }
+    
+    const a = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+    const dmg = this.magicDmg * this.skillAmp; 
+    let skillProps = { isSkill: true, isCrit: false, pierce: 999, splash: 0 };
+
+    // --- BẮT ĐẦU XỬ LÝ KỸ NĂNG TỪNG TƯỚNG ---
+    if(this.type === 'ALENA') {
+        if(key===1) projectiles.push(new Projectile(this.x, this.y, a, 1300, (dmg*2)/3, 1000, 15, {...skillProps, pierce: 10}, '#f1c40f', false));
+        if(key===2) { for(let i=0; i<6; i++) { let spread = (Math.random()-0.5)*0.5; projectiles.push(new Projectile(this.x, this.y, a+spread, 750, dmg*0.6, 650, 4, {...skillProps, pierce: 1}, '#f1c40f', false)); }}
+        if(key===3) { this.atkCooldownBase *= 0.4; setTimeout(() => this.atkCooldownBase /= 0.4, 5000); spawnFloatingText("SPEED UP!", this.x, this.y, "gold"); }
+    } else if(this.type === 'SNOW') {
+        if(key===1) projectiles.push(new Projectile(this.x, this.y, a, 800, dmg, 600, 12, {...skillProps, onHit: 'MAGE_EXPLODE', status: 'FREEZE'}, '#3498db', false));
+        if(key===2) objects.push(new MageVortex(this.x, this.y, dmg, true)); 
+        if(key===3) { effects.push(new Explosion(mouse.worldX, mouse.worldY, 300, 'cyan')); let rSq=300*300; enemies.forEach(e => { if(getDistSq(e, {x:mouse.worldX, y:mouse.worldY}) < rSq) { this.applyHit(e, dmg*3, {...skillProps, status: 'FREEZE'}); }}); }
+    } else if(this.type === 'PARFAIT') {
+        if(key===1) projectiles.push(new Projectile(this.x, this.y, a, 1100, dmg/3, 400, 25, skillProps, '#c0392b', false));
+        if(key===2) { this.shield = this.maxHp * 0.4; this.shieldTimer = 5; spawnFloatingText("SHIELD!", this.x, this.y, "white"); }
+        if(key===3) { this.x += Math.cos(a)*350; this.y += Math.sin(a)*350; }
+    } else if(this.type === 'GONGUN') {
+        if(key===1) { this.speedMod += 150; spawnFloatingText("RUN!!", this.x, this.y, "#e67e22"); setTimeout(() => this.speedMod -= 150, 1500); }
+        if(key===2) { this.bonusAtkSpeed = 5; spawnFloatingText("PIERCING MODE!", this.x, this.y, "#c0392b"); }
+        if(key===3) { 
+            this.isBarraging = true; this.barrageTimer = 3; let waveCount = 0;
+            let barrageInt = setInterval(() => {
+                if(!gameActive || !this.isBarraging || waveCount >= 15) { clearInterval(barrageInt); return; }
+                let curA = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+                for(let i = -2.5; i <= 2.5; i++) {
+                    let fanAngle = curA + (i * 0.1); 
+                    projectiles.push(new Projectile(this.x, this.y, fanAngle, 1200, this.dmg * 0.8, 700, 4, {pierce: 2, isSkill: true}, '#e67e22', false));
+                }
+                waveCount++;
+            }, 200); 
+        }
+    } else if (this.type === 'DURENAI') {
+        if (key===1) { objects.push(new StaticField(this, dmg)); this.shield += this.maxHp * 0.2; this.shieldTimer = 5; spawnFloatingText("SHIELD +20%", this.x, this.y, "white"); }
+        if (key===2) { for(let i=-1; i<=1; i++) { let spread = i * 0.3; projectiles.push(new Projectile(this.x, this.y, a + spread, 700, dmg, 600, 8, {...skillProps, onHit: 'SPLIT_LIGHTNING'}, '#9b59b6', false)); } }
+        if (key===3) { objects.push(new ThunderSphere(this.x, this.y, a, dmg)); }
+    } else if (this.type === 'SHOTGUN') {
+        if(key===1) { this.shield += this.maxHp * 0.5; this.shieldTimer = 5; this.shotgunBuffActive = true; spawnFloatingText("SHIELD +50% & AMMO BUFF", this.x, this.y, "#ff6b81"); setTimeout(() => this.shotgunBuffActive = false, 5000); }
+        if(key===2) { this.speedMod += (this.speedBase * 2); setTimeout(() => this.speedMod -= (this.speedBase * 2), 300); spawnFloatingText("DASH!", this.x, this.y, "#fff"); }
+        if(key===3) { this.shotgunBurstCharges = 3; spawnFloatingText("FULL BURST!", this.x, this.y, "red"); }
+    } else if (this.type === 'LUFFY') {
+        if (key===1) {
+            this.stunTimer = 0.25;
+            projectiles.push(new Projectile(this.x, this.y, a, 1500, (dmg * 2) / 3, 550, 40, {...skillProps, pierce: 999}, '#f39c12', false));
+            spawnFloatingText("PISTOL!", this.x, this.y, "orange");
+        }
+        if (key===2) {
+            this.luffyGatlingTimer = 5;
+            let gatlingInt = setInterval(() => {
+                if(!gameActive || this.luffyGatlingTimer <= 0) { clearInterval(gatlingInt); return; }
+                let curA = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+                let perpAngle = curA + Math.PI/2;
+                let offsetDist = (Math.random() - 0.5) * 60; 
+                let spawnX = this.x + Math.cos(perpAngle) * offsetDist;
+                let spawnY = this.y + Math.sin(perpAngle) * offsetDist;
+                projectiles.push(new Projectile(spawnX, spawnY, curA + (Math.random()-0.5)*0.2, 1200, this.dmg * 0.5, 400, 10, {...skillProps, pierce: 1, onHit: 'LUFFY_HEAL'}, '#f39c12', false));
+            }, 200); 
+        }
+    } else if (this.type === 'MAGNES') {
+        if (key === 1) {
+            this.atkRangeMod += (this.baseRange * 0.2);
+            this.bonusAtkSpeed = 5; 
+            spawnFloatingText("RANGE & SPEED UP!", this.x, this.y, "#8e44ad");
+            setTimeout(() => { this.atkRangeMod -= (this.baseRange * 0.2); }, 5000);
+        }
+        if (key === 2) {
+            let count = 0; let rangeSq = (this.baseRange + this.atkRangeMod) ** 2;
+            enemies.forEach(e => {
+                if (getDistSq(this, e) <= rangeSq) {
+                    let angleToEnemy = Math.atan2(e.y - this.y, e.x - this.x);
+                    projectiles.push(new Projectile(this.x, this.y, angleToEnemy, 800, 20, 600, 6, {isSkill: true, pierce: 1, status: 'SLOW'}, '#8e44ad', false));
+                    count++;
+                }
+            });
+            if (count === 0) spawnFloatingText("NO TARGET", this.x, this.y, "#aaa");
+        }
+        if (key === 3) {
+            this.stunTimer = 1.0; spawnFloatingText("CHARGING...", this.x, this.y, "#8e44ad");
+            setTimeout(() => {
+                if(!gameActive) return;
+                let ultAngle = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+                let ultDamage = dmg; 
+                projectiles.push(new Projectile(this.x, this.y, ultAngle, 1200, ultDamage, 5000, 50, {isSkill: true, pierce: 999, isBoomerang: true, hitList: []}, '#e056fd', false));
+                spawnFloatingText("MEGA BOOMERANG!", this.x, this.y, "#e056fd");
+            }, 1000);
+        }
+    } else if (this.type === 'ELLWITCH') {
+        if (key === 1) {
+            projectiles.push(new Projectile(this.x, this.y, a, 800, 0, 600, 20, 
+                {...skillProps, onHit: 'SPAWN_SUPER_POISON', pierce: 1}, '#006266', false));
+            spawnFloatingText("POISON BOMB!", this.x, this.y, "#009432");
+        }
+        if (key === 2) {
+            this.ellwitchBuffTimer = 3;
+            this.shield += 500; 
+            this.shieldTimer = 3;
+            spawnFloatingText("DRUGGED UP!", this.x, this.y, "#A3CB38");
+        }
+        if (key === 3) {
+            let healAmt = this.maxHp * 0.25;
+            this.hp = Math.min(this.maxHp, this.hp + healAmt);
+            spawnFloatingText(`+${Math.round(healAmt)} HP`, this.x, this.y, "#2ecc71");
+            
+            projectiles.push(new Projectile(this.x, this.y, a, 1000, dmg, 800, 30, 
+                {...skillProps, onHit: 'SPAWN_ULTI_POISON', pierce: 1}, '#833471', false));
+            spawnFloatingText("ULTIMATE BREW!", this.x, this.y, "#833471");
+        }
+    } else if (this.type === 'SKULGEM') {
+        if (key === 1) {
+            projectiles.push(new Projectile(this.x, this.y, a, 900, dmg * 0.5, 700, 20, 
+                {...skillProps, growRate: 80, status: 'KNOCKBACK', knockbackForce: 15, pierce: 999}, '#7efff5', false));
+            spawnFloatingText("WIND SLASH!", this.x, this.y, "#7efff5");
+        }
+        if (key === 2) {
+            projectiles.push(new Projectile(this.x, this.y, a, 1500, dmg * 0.75, 5000, 40, 
+                {...skillProps, growRate: 150, pierce: 999}, '#18dcff', false));
+            spawnFloatingText("GLOBAL SLASH!", this.x, this.y, "#18dcff");
+        }
+        if (key === 3) {
+            let dashDist = 450;
+            let oldX = this.x; let oldY = this.y;
+            this.x += Math.cos(a) * dashDist; this.y += Math.sin(a) * dashDist;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20)); this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+            
+            let distReal = Math.sqrt((this.x - oldX)**2 + (this.y - oldY)**2);
+            projectiles.push(new Projectile(oldX, oldY, a, 5000, dmg * 1.0, distReal + 50, 60,
+                {...skillProps, status: 'KNOCKBACK', knockbackForce: 100, pierce: 999}, 'rgba(126, 255, 245, 0.5)', false));
+
+            spawnFloatingText("WIND STEP!", this.x, this.y, "#fff");
+        }
+    } else if (this.type === 'VEMY') {
+        if (key === 1) {
+            let baseShots = 5;
+            let bonusShots = Math.floor(this.asUpgrades / 3);
+            let totalShots = baseShots + bonusShots;
+            
+            let magicPart = (this.dmg * 2.5 * this.skillAmp) * 0.4;
+            let physPart = this.dmg * 0.4;
+            let skillDmg = magicPart + physPart;
+
+            spawnFloatingText(`BARRAGE x${totalShots}`, this.x, this.y, "#4834d4");
+            
+            let shotCount = 0;
+            let barrageInt = setInterval(() => {
+                if (!gameActive || shotCount >= totalShots) { clearInterval(barrageInt); return; }
+                let curA = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+                let spread = (Math.random() - 0.5) * 0.2;
+                projectiles.push(new Projectile(this.x, this.y, curA + spread, 1300, skillDmg, 600, 8, 
+                    { isSkill: true, pierce: 1 }, '#686de0', false));
+                shotCount++;
+            }, 150);
+        }
+        if (key === 2) {
+            spawnFloatingText("AUTO ACTIVE (PASSIVE)", this.x, this.y, "#aaa");
+            this.mana += s.m; s.cd = 0.5; return; 
+        }
+        if (key === 3) {
+            objects.push(new VemySoldier(this.x + 30, this.y, this.maxHp));
+            objects.push(new VemySoldier(this.x - 30, this.y, this.maxHp));
+            spawnFloatingText("SHADOW CLONES!", this.x, this.y, "#fff");
+        }
+    } else if (this.type === 'CASTUS') {
+        if (key === 1) {
+            let dashDist = 300;
+            this.x += Math.cos(a) * dashDist; this.y += Math.sin(a) * dashDist;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20)); this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+            this.castusS1Active = true;
+            spawnFloatingText("DASH & EMPOWERED!", this.x, this.y, "#d7ccc8");
+        }
+        if (key === 2) {
+            effects.push(new Explosion(this.x, this.y, 250, '#795548'));
+            let rangeSq = 250*250;
+            enemies.forEach(e => {
+                if (getDistSq(this, e) < rangeSq) {
+                    this.applyHit(e, this.dmg, {isSkill: true, status: 'STUN', stunDur: 1.0});
+                }
+            });
+            spawnFloatingText("EARTHQUAKE!", this.x, this.y, "#5d4037");
+        }
+        if (key === 3) {
+            this.shield += 100;
+            this.shieldTimer = 10;
+            let duration = 10;
+            objects.push(new SpinningSword(this, 0, duration));
+            objects.push(new SpinningSword(this, (Math.PI * 2) / 3, duration));
+            objects.push(new SpinningSword(this, (Math.PI * 2) * 2 / 3, duration));
+            spawnFloatingText("SWORD AURA (+100 SHIELD)!", this.x, this.y, "#bcaaa4");
+        }
+    } else if (this.type === 'IMUZIK') {
+        if (key === 1) {
+            let dashRange = this.baseRange + this.atkRangeMod;
+            this.x += Math.cos(a) * dashRange;
+            this.y += Math.sin(a) * dashRange;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20)); 
+            this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+            
+            let smallDmg = this.dmg * 0.5;
+            let rangeSq = 50*50; 
+            enemies.forEach(e => {
+                if (getDistSq(this, e) < rangeSq) { this.applyHit(e, smallDmg, {isSkill: true}); }
+            });
+            this.imuzikImmunityTimer = 1.0;
+            spawnFloatingText("IMMUNE!", this.x, this.y, "#eceff1");
+        }
+        if (key === 2) {
+            let duration = 1.2;
+            let ticks = 10;
+            let tickTime = duration / ticks;
+            this.stunTimer = duration; 
+            spawnFloatingText("RAPID THRUSTS!", this.x, this.y, "#cfd8dc");
+            objects.push(new FanSlashEffect(this, a, duration, ticks, tickTime));
+        }
+        if (key === 3) {
+            let radius = this.baseRange + this.atkRangeMod;
+            effects.push(new Explosion(this.x, this.y, radius, '#607d8b')); 
+            let rangeSq = radius * radius;
+            enemies.forEach(e => {
+                if (getDistSq(this, e) < rangeSq) {
+                    let kAngle = Math.atan2(e.y - this.y, e.x - this.x);
+                    this.applyHit(e, dmg, {isSkill: true, status: 'KNOCKBACK', knockbackAngle: kAngle, knockbackForce: 150});
+                }
+            });
+            this.imuzikUltTimer = 5.0;
+            spawnFloatingText("SPEED & LIFESTEAL UP!", this.x, this.y, "#b0bec5");
+        }
+    } else if (this.type === 'ASAGGY') {
+        if (key === 1) {
+            let dashDist = (this.asaggyQStage === 0) ? 190 : 200;
+            let isSecondCast = (this.asaggyQStage === 1);
+            this.x += Math.cos(a) * dashDist; 
+            this.y += Math.sin(a) * dashDist;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20)); 
+            this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+            
+            let rangeSq = 100 * 100;
+            let hitDmg = isSecondCast ? (dmg * 1.5) : (dmg * 0.5); 
+            let hitProps = { isSkill: true };
+            if (isSecondCast) { hitProps.status = 'STUN'; hitProps.stunDur = 1.0; }
+            
+            effects.push(new Explosion(this.x, this.y, 100, '#57606f'));
+            enemies.forEach(e => { if (getDistSq(this, e) < rangeSq) this.applyHit(e, hitDmg, hitProps); });
+
+            if (!isSecondCast) {
+                this.asaggyQStage = 1; this.asaggyQTimer = 5.0;
+                spawnFloatingText("COMBO READY (5s)", this.x, this.y, "#fff");
+                s.cd = 0.2; 
+            } else {
+                this.asaggyQStage = 0; this.asaggyQTimer = 0;
+                spawnFloatingText("SMASH!", this.x, this.y, "#2f3542");
+            }
+            if (!isSecondCast) { this.mana -= s.m; return; }
+        }
+        if (key === 2) {
+            this.stunTimer = 0.5; 
+            for(let i=0; i<7; i++) {
+                let pAngle = (Math.PI * 2 / 7) * i;
+                effects.push(new Explosion(this.x + Math.cos(pAngle)*60, this.y + Math.sin(pAngle)*60, 10, '#a4b0be')); 
+            }
+            setTimeout(() => {
+                if (!gameActive) return;
+                this.x += Math.cos(a) * 200; this.y += Math.sin(a) * 200;
+                this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20)); 
+                this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+                effects.push(new Explosion(this.x, this.y, 80, '#fff'));
+                this.shield += 100; if (this.shieldTimer <= 0) this.shieldTimer = 5; 
+                spawnFloatingText("+100 SHIELD", this.x, this.y, "#ced6e0");
+            }, 500); 
+        }
+        if (key === 3) {
+            let dashDist = 220;
+            this.x += Math.cos(a) * dashDist; this.y += Math.sin(a) * dashDist;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20)); 
+            this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+            spawnFloatingText("RAPID SLASH!", this.x, this.y, "#ff4757");
+            objects.push(new AsaggyUltSlash(this));
+        }
+    } else if (this.type === 'MAGGAZIC') {
+        if (key === 1) {
+            let startDmg = dmg * 2; 
+            objects.push(new MaggazicSoundWave(this.x, this.y, a, 400, startDmg, 1000, 30, '#d980fa'));
+            spawnFloatingText("CRESCENDO...", this.x, this.y, "#d980fa");
+        }
+        if (key === 2) {
+            projectiles.push(new Projectile(this.x, this.y, a, 1200, 0, 700, 40, 
+                { isSkill: true, pierce: 999, status: 'KNOCKBACK', knockbackForce: 150 }, '#dfe4ea', false));
+            spawnFloatingText("GET BACK!", this.x, this.y, "#fff");
+        }
+        if (key === 3) {
+            let ultRange = 350;
+            let rangeSq = ultRange * ultRange;
+            let magicDmg = this.dmg * 2.5 * this.skillAmp;
+            effects.push(new Explosion(this.x, this.y, ultRange, '#ff9ff3')); 
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rangeSq) { this.applyHit(e, magicDmg, {isSkill: true, status: 'SLOW'}); }
+            });
+            spawnFloatingText("DROP THE BASS!", this.x, this.y, "#ff9ff3");
+        }
+    } else if (this.type === 'AKATSU') {
+        if (key === 1) {
+            this.akatsuS1Active = true;
+            spawnFloatingText("AWM LOADED!", this.x, this.y, "#e58e26");
+            this.atkTimer = 0; 
+        }
+        if (key === 2) {
+            let boomDmg = dmg * 5; 
+            objects.push(new AkatsuC4(mouse.worldX, mouse.worldY, boomDmg));
+            spawnFloatingText("C4 PLANTED (3s)", this.x, this.y, "#fff");
+        }
+        if (key === 3) {
+            spawnFloatingText("GRENADE OUT!", this.x, this.y, "#e74c3c");
+            for(let i = -1; i <= 1; i++) {
+                let spread = i * 0.2; 
+                let bombDmg = dmg * 2; 
+                projectiles.push(new Projectile(this.x, this.y, a + spread, 700, bombDmg, 500, 12, 
+                    { isSkill: true, pierce: 1, onHit: 'AKATSU_GRENADE' }, '#2c3e50', false));
+            }
+        }
+    } else if (this.type === 'YORNMAZIAN') {
+        if (key === 1) {
+            let rangeSq = 120 * 120;
+            effects.push(new Explosion(mouse.worldX, mouse.worldY, 120, '#f1c40f'));
+            enemies.forEach(e => {
+                let d = (e.x - mouse.worldX)**2 + (e.y - mouse.worldY)**2;
+                if (d < rangeSq) { this.applyHit(e, dmg * 0.8, {isSkill: true}); }
+            });
+            spawnFloatingText("EXPLOSIVE ARROW!", this.x, this.y, "#f1c40f");
+            this.yornReady = true; this.yornStacks = 0;
+            spawnFloatingText("PASSIVE READY!", this.x, this.y - 20, "#fff");
+        }
+        if (key === 2) {
+            projectiles.push(new Projectile(this.x, this.y, a, 1000, dmg * 0.5, 600, 20, 
+                { isSkill: true, pierce: 1, status: 'KNOCKBACK', knockbackForce: 100 }, '#e67e22', false));
+            spawnFloatingText("REPULSE!", this.x, this.y, "#e67e22");
+            this.yornReady = true; this.yornStacks = 0;
+            spawnFloatingText("PASSIVE READY!", this.x, this.y - 20, "#fff");
+        }
+        if (key === 3) {
+            objects.push(new YornSigil(mouse.worldX, mouse.worldY));
+            spawnFloatingText("HEAVENLY SIGIL!", this.x, this.y, "#f39c12");
+            this.yornReady = true; this.yornStacks = 0;
+            spawnFloatingText("PASSIVE READY!", this.x, this.y - 20, "#fff");
+        }
+    } 
+     else if (this.type === 'FLORENTINO') {
+        if (key === 1) {
+            // Chiêu 1: Phi hoa gây choáng + tạo 3 bông hoa
+            projectiles.push(new Projectile(this.x, this.y, a, 1200, dmg, 700, 15, 
+                { isSkill: true, pierce: 1, status: 'STUN', stunDur: 1.0, onHit: 'FLORENTINO_FLOWER_SPAWN' }, 
+                '#fd79a8', false));
+            spawnFloatingText("BLOSSOM!", this.x, this.y, "#fd79a8");
+        }
+        if (key === 2) {
+            // Chiêu 2: Sát thương diện rộng R=100
+            let areaRadius = 150; 
+            effects.push(new Explosion(this.x, this.y, areaRadius, '#d63031'));
+            let rSq = areaRadius * areaRadius;
+
+            let s2Dmg = dmg * 1.5; 
+    
+            enemies.forEach(e => {
+                let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                let diff = Math.abs(eAng - a);
+                if (diff > Math.PI) diff = 2 * Math.PI - diff;
+
+                if (getDistSq(this, e) < rSq && diff < Math.PI/1.5) {
+                    this.applyHit(e, s2Dmg, {isSkill: true});
+                }
+            });
+            spawnFloatingText("SLASH!", this.x, this.y, "#fff");
+        }
+        if (key === 3) {
+            // Chiêu 3: Lướt + Buff giáp máu ảo
+            let dashDist = 400;
+            this.x += Math.cos(a) * dashDist;
+            this.y += Math.sin(a) * dashDist;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20));
+    
+            let shieldAmt = this.hp; 
+            this.shield += shieldAmt;
+            this.shieldTimer = 10;
+    
+            spawnFloatingText(`DUEL! (+${Math.round(shieldAmt)} Shield)`, this.x, this.y, "#e17055");
+            effects.push(new Explosion(this.x, this.y, 100, '#fff'));
+        }
+    }else if (this.type === 'GORGGER') {
+        if (key === 1) {
+            // Chiêu 1: Bom chậm, gây choáng diện rộng
+            let boomDmg = this.magicDmg * this.skillAmp;
+            projectiles.push(new Projectile(this.x, this.y, a, 500, boomDmg, 500, 20, 
+                { isSkill: true, pierce: 1, status: 'STUN', stunDur: 1.5, onHit: 'GORGGER_Q_EXPLODE' }, '#f39c12', false));
+            spawnFloatingText("STUN BOMB!", this.x, this.y, "#f39c12");
+        }
+        if (key === 2) {
+            // Chiêu 2: Lướt + 500% Tốc đánh (3 đòn)
+            let dashDist = 200;
+            this.x += Math.cos(a) * dashDist;
+            this.y += Math.sin(a) * dashDist;
+            
+            // Giới hạn bản đồ để không lướt ra ngoài
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20));
+            this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+            
+            // Tăng tốc đánh: Giảm cooldown cơ bản đi 5 lần (tương đương 500%)
+            this.gorggerAmmo = 3;
+            this.atkCooldownBase = 2.5 / 5; 
+            
+            spawnFloatingText("RAPID FIRE (3)!", this.x, this.y, "#e1b12c");
+        }
+        if (key === 3) {
+            // Chiêu 3: Toggle Pháo Đài
+            this.toggleGorggerMode(!this.gorggerMode);
+            
+            if (this.gorggerMode) {
+                 spawnFloatingText("FORTRESS MODE!", this.x, this.y, "#c0392b");
+            } else {
+                 // Nếu tắt đi thì gán hồi chiêu 2 giây để không spam liên tục
+                 s.cd = 2; 
+            }
+            // Return để KHÔNG chạy xuống phần trừ mana/hồi chiêu chung bên dưới
+            return; 
+        }
+    } else if (this.type === 'DUALATASATA') {
+        // Tính toán lượng máu tiêu hao (s.m đang lưu % máu)
+        let hpCost = this.maxHp * s.m;
+
+        // Kiểm tra đủ máu không
+        if (this.hp <= hpCost) { spawnFloatingText("NOT ENOUGH HP", this.x, this.y, "red"); return; }
+
+        // Trừ máu và gán hồi chiêu thủ công
+        this.hp -= hpCost;
+        s.cd = s.max;
+
+        if (key === 1) {
+            // Chiêu 1: Lướt + Nổ + Làm chậm + Hồi máu
+            let dashDist = 250;
+            this.x += Math.cos(a) * dashDist; 
+            this.y += Math.sin(a) * dashDist;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20));
+    
+            let dmgS1 = this.maxHp * 0.03; // Dmg 3% Max HP
+            effects.push(new Explosion(this.x, this.y, 150, '#8d6e63'));
+            
+            let rSq = 150*150;
+            enemies.forEach(e => {
+                if (getDistSq(this, e) < rSq) {
+                    this.applyHit(e, dmgS1, {isSkill: true, status: 'SLOW'});
+                    e.slowTimer = 5.0; // Làm chậm 5s
+                    e.slowPercent = 0.5; // Giảm 50% tốc
+                }
+            });
+
+            // Heal 6% Max HP trong 5s => CỘNG DỒN
+            this.dualaBuffs.push({
+                rate: (this.maxHp * 0.06) / 5,
+                time: 5.0
+            });
+            spawnFloatingText("LEAP!", this.x, this.y, "#795548");
+        }
+        if (key === 2) {
+            // Chiêu 2: Khựng 0.3s + Quay búa + Hồi máu
+            this.stunTimer = 0.3;
+            let dmgS2 = this.maxHp * 0.08; // Dmg 8% Max HP
+            effects.push(new Explosion(this.x, this.y, 200, '#a1887f'));
+    
+            let rSq = 200*200;
+            enemies.forEach(e => {
+                if (getDistSq(this, e) < rSq) this.applyHit(e, dmgS2, {isSkill: true});
+            });
+
+            // Heal 7% Max HP trong 5s => CỘNG DỒN
+            this.dualaBuffs.push({
+                rate: (this.maxHp * 0.07) / 5,
+                time: 5.0
+            });
+            spawnFloatingText("SMASH!", this.x, this.y, "#fff");
+        }
+        if (key === 3) {
+            // Chiêu 3: Tốc chạy + Siêu hồi máu
+            this.speedMod += (this.speedBase * 0.5); // +50% Tốc chạy
+            setTimeout(() => this.speedMod -= (this.speedBase * 0.5), 15000); // Hết 15s trừ lại
+
+            // Heal 200% Max HP trong 15s => CỘNG DỒN
+            this.dualaBuffs.push({
+                rate: (this.maxHp * 2.0) / 15,
+                time: 15.0
+            });
+            spawnFloatingText("IMMORTAL!", this.x, this.y, "#2ecc71");
+        }
+        // Return để không chạy xuống phần trừ mana mặc định bên dưới
+        return;
+    } else if (this.type === 'RUMBABARIAN') {
+            if (key === 1) {
+                // Chiêu 1: Bật mode đấm liên tục + khiên + miễn thương
+                this.rumbaS1Timer = 5.0;
+                this.shield += this.maxHp * 0.15; // 15% Máu ảo
+                this.shieldTimer = 5.0;
+                spawnFloatingText("IRON BODY!", this.x, this.y, "#7f8c8d");
+            }
+            if (key === 2) {
+                // Chiêu 2: Đấm lớn R=200, Choáng 2.5s, Đẩy lùi
+                let r2 = 200;
+                let r2Sq = r2 * r2;
+                let magicDmg = this.dmg * 2.5 * this.skillAmp; // 100% Sát thương phép
+
+                effects.push(new Explosion(this.x, this.y, r2, '#c23616')); // Visual
+                spawnFloatingText("SMASH!", this.x, this.y, "#c23616");
+
+                enemies.forEach(e => {
+                    let d = getDistSq(this, e);
+                    if (d < r2Sq) {
+                        // Kiểm tra góc hình quạt phía trước
+                        let eAng = Math.atan2(e.y - this.y, e.x - this.x);
+                        let diff = Math.abs(eAng - a);
+                        if (diff > Math.PI) diff = 2 * Math.PI - diff;
+
+                        if (diff < 1.0) { // Góc khoảng 60 độ mỗi bên
+                            this.applyHit(e, magicDmg, {
+                                isSkill: true, 
+                                status: 'STUN', 
+                                stunDur: 2.5,
+                                status: 'KNOCKBACK',
+                                knockbackForce: 150,
+                                knockbackAngle: a
+                            });
+                        }
+                    }
+                });
+            }
+            if (key === 3) {
+                // Chiêu 3: Khựng 0.5s rồi đấm liên tục (Logic đấm nằm ở hàm update)
+                this.stunTimer = 0.5; // Khựng
+                spawnFloatingText("CHARGING...", this.x, this.y, "#e17055");
+        
+                setTimeout(() => {
+                    if (!gameActive) return;
+                    this.rumbaUltTimer = 3.0;
+                    spawnFloatingText("ORA ORA ORA!", this.x, this.y, "#c23616");
+                }, 500);
+            }
+            } else if (this.type === 'NEUSOLD') {
+            if (key === 1) {
+                // Chiêu 1: 5 Linh hồn Boommerang hình quạt
+                let baseAngle = a;
+                let skillDmg = (this.magicDmg * this.skillAmp) * 2; // 20% Phép
+
+                // Bắn 5 tia, góc lệch nhau
+                for (let i = -2; i <= 2; i++) {
+                    let spread = i * 0.15; // Góc lệch
+                    projectiles.push(new Projectile(
+                        this.x, this.y, baseAngle + spread, 
+                        900, // Tốc độ bay
+                        skillDmg, 
+                        250, // Tầm xa 250
+                        10,  // Kích thước đạn
+                        { 
+                            isSkill: true, 
+                            pierce: 999, // Xuyên thấu
+                            isBoomerang: true, // Quay về
+                            hitList: [] 
+                        }, 
+                        '#d2dae2', false
+                    ));
+                }
+                spawnFloatingText("SOULS!", this.x, this.y, "#485460");
+            }
+            if (key === 2) {
+                // Chiêu 2: Khựng 0.5s, Xoay tròn, Heal
+                this.stunTimer = 0.5;
+                let spinDmg = (this.magicDmg * this.skillAmp) * 0.75; // 75% Phép
+                let radius = 150;
+        
+                effects.push(new Explosion(this.x, this.y, radius, '#485460'));
+                spawnFloatingText("SPIN!", this.x, this.y, "#fff");
+
+                let totalHeal = 0;
+                let healPerHit = (this.magicDmg * this.skillAmp) * 0.01; // 1% Phép mỗi mục tiêu
+
+                let rSq = radius * radius;
+                enemies.forEach(e => {
+                    if (getDistSq(this, e) < rSq) {
+                        this.applyHit(e, spinDmg, {isSkill: true});
+                        totalHeal += healPerHit;
+                    }
+                });
+
+                if (totalHeal > 0) {
+                    this.hp = Math.min(this.maxHp, this.hp + totalHeal);
+                    spawnFloatingText(`+${Math.round(totalHeal)}`, this.x, this.y, "#2ecc71");
+                }
+            }
+            if (key === 3) {
+                // Chiêu 3: Hóa hồn 5s
+                this.neusoldUltActive = true;
+                this.neusoldUltTimer = 5.0;
+                this.imuzikImmunityTimer = 5.0; // Tận dụng biến bất tử có sẵn của Imuzik (hoặc tạo mới nếu muốn)
+                spawnFloatingText("IMMORTAL SOUL!", this.x, this.y, "#d2dae2");
+            }
+        } else if (this.type === 'ZIKU') {
+            if (key === 1) {
+                // Chiêu 1 MỚI: Kích hoạt trạng thái bắn liên tiếp 7 cái
+                this.zikuS1Active = true;
+                this.zikuS1Count = 7;
+                this.zikuS1Timer = 0; // Bắn viên đầu tiên ngay lập tức
+                
+                spawnFloatingText("RAPID THROW!", this.x, this.y, "#feca57");
+            }
+            if (key === 2) {
+                // Chiêu 2: Lướt + Buff
+                let dashDist = 250;
+                this.x += Math.cos(a) * dashDist;
+                this.y += Math.sin(a) * dashDist;
+                this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20));
+                this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+
+                this.zikuBuffTimer = 2.5; // Buff 2.5s
+                spawnFloatingText("LIGHTNING SPEED!", this.x, this.y, "#fff");
+            }
+            if (key === 3) {
+                // Chiêu 3: Kích hoạt rải đạn
+                this.zikuUltActive = true;
+                this.zikuUltCount = 30;
+                this.zikuUltTimer = 0;
+                spawnFloatingText("STORM!", this.x, this.y, "#e15f41");
+            }
+        }
+    
+
+    // --- HỒI CHIÊU CHUNG ---
+    // Áp dụng cho tất cả tướng TRỪ những trường hợp đặc biệt đã xử lý riêng ở trên
+    if (!(this.type === 'LUFFY' && key === 3) && !(this.type === 'ASAGGY' && key === 1 && this.asaggyQStage === 1)) {
+        s.cd = s.max;    
+        this.mana -= s.m;
+    }
+    
+}
+    
+    toggleLuffyMode(active) {
+        this.luffyMode = active;
+        const s3 = this.skills[3];
+        const slot = document.getElementById('slot-3');
+        if (active) { spawnFloatingText("GEAR ACTIVE!", this.x, this.y, "#e74c3c"); slot.classList.add('skill-active'); } 
+        else { spawnFloatingText("GEAR OFF", this.x, this.y, "#aaa"); slot.classList.remove('skill-active'); s3.cd = s3.max; }
+    }
+
+        toggleGorggerMode(active) {
+        this.gorggerMode = active;
+        const slot3 = document.getElementById('slot-3');
+        if (active) {
+            // Kích hoạt
+            let shieldAmt = this.maxHp * 2.5;
+            this.shield += shieldAmt;
+            this.shieldTimer = 10; // Tồn tại 10s
+        
+            // +250% Tốc đánh (Giảm CD gốc đi 3.5 lần - 100% + 250% = 350%)
+            // Nhưng yêu cầu là +250% tốc, tức là bắn nhanh gấp 3.5 lần
+            this.baseAsCache = this.atkCooldownBase; // Lưu tốc gốc
+            this.atkCooldownBase = 2.5 / 3.5; 
+        
+            slot3.classList.add('skill-active');
+        } else {
+            // Hủy kích hoạt
+            this.shield = 0; // Mất hết giáp ảo
+            this.atkCooldownBase = 2.5; // Trả lại tốc đánh gốc (hoặc giá trị mặc định)
+            slot3.classList.remove('skill-active');
+            spawnFloatingText("MOVING...", this.x, this.y, "#fff");
+        }
+    }
+
+    castSpecial() {
+        if(this.specialCD > 0) return;
+        
+        if(this.special === 'HEAL') { this.regenTimer = 5; spawnFloatingText("RECOVERING...", this.x, this.y, "#2ecc71"); } 
+        else if(this.special === 'FREEZE') { freezeTimer = 3; spawnFloatingText("TIME STOP!", this.x, this.y, "#3498db"); } 
+        else if(this.special === 'TURRET') { objects.push(new Turret(this.x, this.y)); spawnFloatingText("TURRET!", this.x, this.y, "#95a5a6"); }
+        else if(this.special === 'TELEPORT') {
+            let angle = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+            let dist = 400; this.x += Math.cos(angle) * dist; this.y += Math.sin(angle) * dist;
+            this.x = Math.max(20, Math.min(this.x, WORLD_WIDTH-20)); this.y = Math.max(20, Math.min(this.y, WORLD_HEIGHT-20));
+            spawnFloatingText("FLASH!", this.x, this.y, "#f1c40f");
+        }
+        else if(this.special === 'RAGE') { this.rageActive = true; this.rageTimer = 3; spawnFloatingText("RAGE!", this.x, this.y, "#c0392b"); }
+        else if(this.special === 'PROTECT') { this.protectActive = true; this.protectTimer = 4; spawnFloatingText("GUARD!", this.x, this.y, "#34495e"); }
+        // --- LOGIC TRỪNG TRỊ (Dán vào trong castSpecial) ---
+        else if(this.special === 'SMITE') {
+            // Tìm Boss hoặc Rồng đang tồn tại
+            let target = enemies.find(e => e.type === 'BOSS' || e.type === 'LIGHT_DRAGON');
+            
+            if (target) {
+                // Tính sát thương: (Vật lý + Phép) * 5
+                let physDmg = this.dmg;
+                let magicDmg = this.magicDmg * this.skillAmp;
+                let totalSmiteDmg = (physDmg + magicDmg ) * 50 ;
+
+                // Hiệu ứng sét đánh thẳng xuống đầu Boss
+                effects.push(new LightningBolt(target.x, target.y - 500, target.x, target.y, 20)); // Sét từ trên trời
+                effects.push(new Explosion(target.x, target.y, 200, '#ff0000')); // Nổ đỏ
+
+                // Gây sát thương trực tiếp (Không dùng applyHit để tránh hút máu)
+                target.takeDamage(totalSmiteDmg);
+                
+                // Gây choáng 0.5s
+                target.freezeTimer = 0.5;
+
+                // Cập nhật thống kê sát thương (Optional)
+                heroTotalDmg += totalSmiteDmg;
+                heroSkillDmg += totalSmiteDmg;
+
+                spawnFloatingText("SMITE!", target.x, target.y - 50, "#fff");
+                spawnFloatingText(Math.round(totalSmiteDmg), target.x, target.y, "#ff0000");
+            } else {
+                spawnFloatingText("NO BOSS FOUND!", this.x, this.y, "#7f8c8d");
+                return; // Nếu không có Boss thì không hồi chiêu
+            }
+        }
+        this.specialCD = this.specialMaxCD;
+    }
+
+    takeDamage(amt) {
+        if (this.imuzikImmunityTimer > 0) return; // IMUZIK Immune
+
+        if (this.isRumbaGuard) amt *= 0.05; // Giảm 95% sát thương
+
+        if (this.protectActive) amt *= 0.5;
+        if (this.ellwitchBuffTimer > 0) amt *= 0.8; 
+
+        let effectiveArmor = Math.min(0.95, this.armor);
+        let final = amt * (1 - effectiveArmor);
+        
+        if(this.shield > 0) { if(final > this.shield) { final -= this.shield; this.shield = 0; } else { this.shield -= final; final = 0; } }
+        this.hp -= final;
+        if(this.hp <= 0) { gameActive = false; alert("GAME OVER!\nScore: " + score); location.reload(); }
+    }
+
+    updateUI() {
+        document.getElementById('hp-fill').style.width = (Math.max(0,this.hp)/this.maxHp*100)+'%';
+        document.getElementById('hp-text').innerText = `${Math.round(this.hp)}/${Math.round(this.maxHp)}`;
+        
+        document.getElementById('shield-fill').style.width = (Math.min(this.maxHp, this.shield)/this.maxHp*100)+'%';
+        
+        document.getElementById('mana-fill').style.width = (this.mana/this.maxMana*100)+'%';
+        document.getElementById('mana-text').innerText = `${Math.floor(this.mana)}/${Math.floor(this.maxMana)}`;
+
+        document.getElementById('xp-fill').style.width = (this.exp/this.expToLevel*100)+'%';
+        document.getElementById('hero-info').innerText = `${this.type} - LV.${this.level}`;
+        document.getElementById('score-val').innerText = score;
+
+        document.getElementById('dmg-phys').innerText = `Tay: ${Math.round(heroPhysDmg)}`;
+        document.getElementById('dmg-skill').innerText = `Skill: ${Math.round(heroSkillDmg)}`;
+        document.getElementById('dmg-total').innerText = `Tổng: ${Math.round(heroTotalDmg)}`;
+
+        for(let i=1; i<=3; i++) document.getElementById(`cd-${i}`).style.height = (this.skills[i].cd/this.skills[i].max*100)+'%';
+        document.getElementById(`cd-4`).style.height = (this.specialCD/this.specialMaxCD*100)+'%';
+
+        document.getElementById('stat-dmg').innerText = `DMG: ${Math.round(this.dmg)}`;
+        let mDmg = this.magicDmg * this.skillAmp;
+        document.getElementById('stat-mdmg').innerText = `ST PHÉP: ${Math.round(mDmg)}`;
+        document.getElementById('stat-armor').innerText = `GIÁP: ${(Math.min(0.95, this.armor)*100).toFixed(0)}%`;
+        document.getElementById('stat-crit').innerText = `CHÍ MẠNG: ${(this.critRate*100).toFixed(0)}%`;
+        document.getElementById('stat-critdmg').innerText = `ST CHÍ MẠNG: +${(this.critDamagePercent*100).toFixed(1)}%`;
+        let curLs = this.lifesteal;
+        if (this.type === 'IMUZIK' && this.imuzikUltTimer > 0) curLs += 0.05;
+        document.getElementById('stat-ls').innerText = `HÚT MÁU: ${(curLs*100).toFixed(1)}%`;
+        document.getElementById('stat-sv').innerText = `HÚT PHÉP: ${(this.spellVamp*100).toFixed(1)}%`;
+        document.getElementById('stat-reflect').innerText = `PHẢN DAME: ${(this.thorns*100).toFixed(0)}%`;
+        document.getElementById('stat-regen').innerText = `HỒI MÁU: ${this.hpRegen}/s`;
+        let manaRegenTotal = 15 + (this.maxMana * this.manaRegenPct);
+        document.getElementById('stat-mregen').innerText = `HỒI MANA: ${manaRegenTotal.toFixed(1)}/s`;
+    }
+
+    draw() {
+        if (this.type === 'YORNMAZIAN' && this.yornReady) {
+            ctx.save();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = "#f1c40f"; // Vàng sáng
+            ctx.fillStyle = "#fff"; // Nhân vật chuyển trắng
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 2, 0, Math.PI*2); ctx.fill();
+            ctx.restore();
+        }
+        ctx.fillStyle = this.color; 
+        if (this.imuzikImmunityTimer > 0) ctx.fillStyle = '#fff'; // White when immune
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#222'; ctx.lineWidth=2; ctx.stroke();
+        
+        if (this.luffyMode) {
+            ctx.strokeStyle = 'rgba(231, 76, 60, 0.5)'; ctx.lineWidth=2;
+            ctx.beginPath(); ctx.arc(this.x, this.y, 250, 0, Math.PI*2); ctx.stroke();
+            ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius+5, 0, Math.PI*2); ctx.fill();
+        }
+        if (this.protectActive) {
+            ctx.strokeStyle = 'rgba(52, 152, 219, 0.5)'; ctx.lineWidth=3;
+            ctx.beginPath(); ctx.arc(this.x, this.y, 300, 0, Math.PI*2); ctx.stroke();
+            ctx.fillStyle = 'rgba(52, 152, 219, 0.1)'; ctx.fill();
+        }
+        if (this.ellwitchBuffTimer > 0) {
+            ctx.strokeStyle = '#009432'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius+8, 0, Math.PI*2); ctx.stroke();
+        }
+        if (this.vemyS2Active) {
+            ctx.strokeStyle = '#a29bfe'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius+5, 0, Math.PI*2); ctx.stroke();
+        }
+        if (this.castusS1Active) {
+            ctx.strokeStyle = '#ffeb3b'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius+6, 0, Math.PI*2); ctx.stroke();
+        }
+        if (this.type === 'IMUZIK' && this.imuzikUltTimer > 0) {
+            ctx.strokeStyle = '#b0bec5'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius+8, 0, Math.PI*2); ctx.stroke();
+        }
+
+        if(this.shield > 0) { ctx.strokeStyle = 'white'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(this.x,this.y,this.radius+6,0,Math.PI*2); ctx.stroke(); }
+        
+        if (this.type === 'NEUSOLD' && this.neusoldUltActive) {
+            ctx.globalAlpha = 0.5; // Làm nhân vật mờ đi như bóng ma
+            ctx.strokeStyle = '#d2dae2'; 
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 10, 0, Math.PI*2); ctx.stroke();
+        }
+
+        // ... vẽ nhân vật ...
+
+        // Nhớ reset lại alpha ở cuối hàm draw hoặc sau khi vẽ xong nhân vật
+        if (this.type === 'NEUSOLD' && this.neusoldUltActive) {
+            ctx.globalAlpha = 1.0;
+        }
+    }
+}
+
+class Projectile {
+    constructor(x,y,a,s,d,r,sz,props,c, isEnemy) {
+        this.x=x; this.y=y; this.dmg=d; this.vx=Math.cos(a)*s; this.vy=Math.sin(a)*s;
+        this.speed = s; this.angle = a;
+        this.dist=0; this.max=r; this.size=sz; this.props=props; this.color=c; this.dead=false;
+        this.isEnemy = isEnemy || false;
+        this.returning = false;
+    }
+    update(dt) {
+        if (this.props.growRate) {
+            this.size += this.props.growRate * dt;
+        }
+
+        if (this.props.isBoomerang) {
+            if (!this.returning) {
+                this.x += this.vx*dt; this.y += this.vy*dt; this.dist += this.speed*dt;
+                if (this.dist >= this.max) this.returning = true;
+            } else {
+                let dx = hero.x - this.x; let dy = hero.y - this.y;
+                let distToHero = Math.sqrt(dx*dx + dy*dy);
+                if (distToHero > 10) { this.vx = (dx/distToHero)*this.speed; this.vy = (dy/distToHero)*this.speed; this.x += this.vx * dt; this.y += this.vy * dt; } 
+                else { this.dead = true; }
+            }
+        } else {
+            this.x += this.vx*dt; this.y += this.vy*dt; this.dist += Math.hypot(this.vx, this.vy)*dt;
+            if(this.dist > this.max) {
+                this.dead = true;
+                if (this.props.onHit === 'MAGE_EXPLODE') {
+                    effects.push(new Explosion(this.x, this.y, 120, '#3498db'));
+                    let rSq=120*120; enemies.forEach(e => { if(getDistSq(e, this) < rSq) hero.applyHit(e, this.dmg, this.props); });
+                } else if (this.props.onHit === 'AKATSU_GRENADE') {
+                    effects.push(new Explosion(this.x, this.y, 150, '#e74c3c'));
+                    let rSq = 150 * 150;
+                    enemies.forEach(en => { 
+                        if(getDistSq(en, this) < rSq) { 
+                            en.freezeTimer = 5.0; 
+                            hero.applyHit(en, this.dmg, {isSkill: true});
+                            spawnFloatingText("STUN 5s!", en.x, en.y, "yellow");
+                        } 
+                    });
+                    this.dead = true;
+                } else if (this.props.onHit === 'GORGGER_Q_EXPLODE') {
+                    // Nổ gây dmg phép và choáng
+                    effects.push(new Explosion(this.x, this.y, 150, '#e67e22'));
+                    let rSq = 150*150;
+                    enemies.forEach(e => {
+                        if(getDistSq(e, this) < rSq) {
+                            hero.applyHit(e, this.dmg, this.props); // Props đã có status: STUN
+                        }
+                    });
+                    this.dead = true;
+                }
+            }
+        } 
+        
+        if (this.isEnemy) {
+            let minDist = hero.radius + this.size;
+            if (getDistSq(this, hero) < minDist * minDist) { hero.takeDamage(this.dmg); this.dead = true; }
+        } else  {
+            for(let i = 0; i < enemies.length; i++) {
+                let e = enemies[i];
+                let hitSize = this.props.onHit === 'LUFFY_PUNCH' ? 40 : this.size; 
+                let minDist = e.radius + hitSize;
+                
+                if(getDistSq(this, e) < minDist * minDist) {
+                    this.props.knockbackAngle = this.angle;
+
+                    if (this.props.onHit === 'FLORENTINO_FLOWER_SPAWN') {
+                        hero.applyHit(e, this.dmg, this.props);
+                        for(let k=0; k<3; k++) {
+                            let fAngle = (Math.PI * 2 / 3) * k; 
+                            let dist = 100;
+                            let fx = e.x + Math.cos(fAngle) * dist;
+                            let fy = e.y + Math.sin(fAngle) * dist;
+                            objects.push(new FloFlower(fx, fy));
+                        }
+                        this.dead = true;
+                        break; 
+                    }
+
+                    if (this.props.onHit === 'SPAWN_POISON' || this.props.onHit === 'SPAWN_SUPER_POISON' || this.props.onHit === 'SPAWN_ULTI_POISON') {
+                        this.dead = true;
+                        
+                        if (this.props.onHit === 'SPAWN_ULTI_POISON') hero.applyHit(e, this.dmg, this.props);
+
+                        let radius = 40; 
+                        if (this.props.onHit === 'SPAWN_SUPER_POISON') radius = 120;
+                        if (this.props.onHit === 'SPAWN_ULTI_POISON') radius = 150;
+
+                        let duration = 3.5;
+                        if (this.props.onHit === 'SPAWN_SUPER_POISON') duration = 5.0;
+
+                        let magicDmg = hero.magicDmg * hero.skillAmp;
+                        let damagePerTick = magicDmg * 0.15; 
+                        if (this.props.onHit === 'SPAWN_SUPER_POISON') damagePerTick *= 3; 
+
+                        let isSlow = (this.props.onHit === 'SPAWN_SUPER_POISON');
+                        
+                        objects.push(new PoisonZone(this.x, this.y, radius, duration, damagePerTick, isSlow));
+                        break;
+                    }
+
+                    if (this.props.isBoomerang) {
+                        if (!this.props.hitList.includes(e)) {
+                            this.props.hitList.push(e);
+                            let actualDmg = this.dmg;
+                            if (this.props.hitList.length > 1) actualDmg = this.dmg * 0.2; 
+                            hero.applyHit(e, actualDmg, this.props);
+                        }
+                    } 
+                    else if (this.props.onHit === 'LUFFY_PUNCH') {
+                        if (this.props.firstHit) { hero.applyHit(e, this.props.damageMain, this.props); this.props.firstHit = false; } 
+                        else { hero.applyHit(e, this.props.damageMain * 0.07, this.props); }
+                    }
+                    else if (this.props.onHit === 'LUFFY_HEAL') {
+                        hero.hp = Math.min(hero.maxHp, hero.hp + (hero.maxHp * 0.01)); 
+                        hero.applyHit(e, this.dmg, this.props); this.dead = true;
+                    }
+                    else if (this.props.onHit === 'MAGE_EXPLODE') {
+                        effects.push(new Explosion(this.x, this.y, 120, '#3498db'));
+                        let rSq=120*120; let hitTargets = [];
+                        enemies.forEach(en => { if(getDistSq(en, this) < rSq) hitTargets.push(en); });
+                        hitTargets.forEach(en => hero.applyHit(en, this.dmg, this.props));
+                        this.dead = true;
+                    } 
+                    else if (this.props.onHit === 'ZIKU_PASSIVE') {
+                        // 1. Gây sát thương đòn đánh chính
+                        hero.applyHit(e, this.dmg, this.props);
+    
+                        // 2. Giật sét sang 1 mục tiêu gần nhất
+                        let nearest = null; 
+                        let minD = 300 * 300; // Tầm giật sét 300
+    
+                        for(let other of enemies) {
+                            if (other !== e) {
+                                let d = getDistSq(e, other);
+                                if (d < minD) { minD = d; nearest = other; }
+                            }
+                        }
+    
+                        if (nearest) {
+                            // 30% sát thương vật lý
+                                let shockDmg = this.dmg * 0.3;
+                                hero.applyHit(nearest, shockDmg, {isSkill: false, isCrit: this.props.isCrit});
+                            // Hiệu ứng sét
+                            effects.push(new LightningBolt(e.x, e.y, nearest.x, nearest.y, 10));
+                            }
+                        this.dead = true; // Mất phi tiêu sau khi trúng
+                        }
+
+                        else if (this.props.zikuShuriken) {
+                        // Logic giảm sát thương: Mục tiêu đầu 100%, sau 25%
+                        let physDmg = (this.props.hitCount === 0) ? this.props.basePhys : (this.props.basePhys * 0.25);
+                        let totalDmg = physDmg + this.props.bonusMagic;
+    
+                        // Tăng biến đếm số lần trúng
+                        this.props.hitCount++;
+    
+                        // Gây sát thương (Tính là phép tổng hợp)
+                        hero.applyHit(e, totalDmg, {isSkill: true, isCrit: false}); 
+    
+                        // Tạo hiệu ứng nhỏ
+                        effects.push(new Explosion(e.x, e.y, 20, '#feca57'));
+    
+                        // Không set this.dead = true vì xuyên thấu 100% (đã set pierce 999 ở trên)
+                    }
+                    else if (this.props.onHit === 'SPLIT_LIGHTNING') {
+                        this.dead = true; hero.applyHit(e, this.dmg, this.props);
+                        for(let k=0; k<5; k++) {
+                            let ra = Math.random() * Math.PI * 2;
+                            projectiles.push(new Projectile(this.x, this.y, ra, 500, this.dmg * 0.1, 150, 3, {isSkill:true, pierce:1}, '#f1c40f', false));
+                        }
+                    }
+                    else {
+                        hero.applyHit(e, this.dmg, this.props);
+                        if (this.props.pierce !== 999) { this.props.pierce--; if(this.props.pierce <= 0) { this.dead = true; break; } }
+                    }
+                }
+            }
+            for(let o of objects) {
+                if(o instanceof Chest) {
+                    let minDist = 25 + this.size; 
+                    if(getDistSq(this, o) < minDist * minDist) {
+                        hero.applyHit(o, this.dmg, this.props);
+                        if (this.props.onHit === 'LUFFY_HEAL') hero.hp = Math.min(hero.maxHp, hero.hp + (hero.maxHp * 0.01));
+                        if (this.props.pierce !== 999) { this.props.pierce--; if(this.props.pierce <= 0) { this.dead = true; break; } }
+                    }
+                }
+            }
+        }  
+        
+    }
+    draw() { ctx.fillStyle=this.color; ctx.beginPath(); ctx.arc(this.x,this.y,this.size,0,Math.PI*2); ctx.fill(); }
+}
+
+class Enemy {
+    constructor(type) {
+        let angle = Math.random() * Math.PI * 2;
+        let dist = 600 + Math.random() * 400; 
+        if(type === 'SUMMONED') dist = 50; 
+
+        this.x = hero.x + Math.cos(angle) * dist;
+        this.y = hero.y + Math.sin(angle) * dist;
+        this.x = Math.max(50, Math.min(this.x, WORLD_WIDTH-50));
+        this.y = Math.max(50, Math.min(this.y, WORLD_HEIGHT-50));
+
+        this.type = type; 
+        let timeScale = (1 + gameTime/120); 
+
+        const cfgs = {
+            'NORMAL':   { hp: 300, spd: 140, dmg: 30, r: 18, c: '#ff4757' },
+            'HEALER':   { hp: 450, spd: 110, dmg: 10, r: 22, c: '#2ed573' }, 
+            'FAST':     { hp: 200, spd: 260, dmg: 40, r: 14, c: '#e67e22' }, 
+            'TANK':     { hp: 1500, spd: 80, dmg: 60, r: 35, c: '#34495e' }, 
+            'SUMMONER': { hp: 800, spd: 100, dmg: 20, r: 28, c: '#8e44ad' },
+            'ARCHER':   { hp: 350, spd: 130, dmg: 40, r: 18, c: '#16a085' }, 
+            'MAGE':     { hp: 75, spd: 80, dmg: 10, r: 20, c: '#8e44ad' }, 
+            'SLIME_BIG':   { hp: 1500, spd: 600, dmg: 60, r: 40, c: '#2ecc71' }, // To, Trâu, Lướt mạnh
+            'SLIME_MED':   { hp: 1000,  spd: 650, dmg: 40, r: 25, c: '#badc58' }, // Vừa
+            'SLIME_SMALL': { hp: 500,  spd: 700, dmg: 20, r: 15, c: '#6ab04c' },  // Nhỏ, Yếu
+            'BOSS':     { hp: 5000 * bossLevel, spd: 120, dmg: 80 * bossLevel, r: 60, c: '#e84118' },
+            'LIGHT_DRAGON': { hp: 12500 * bossLevel, spd: 110, dmg: 100 * bossLevel, r: 80, c: '#fff200' },
+        };
+        const c = cfgs[type] || cfgs['NORMAL'];
+        this.hp = c.hp * timeScale; if(type === 'BOSS') this.hp = c.hp; 
+        this.maxHp = this.hp; this.speed = c.spd; this.damage = c.dmg; this.radius = c.r; this.color = c.c;
+        this.healCD = 5; this.summonCD = 6; this.attackTimer = 2; this.globalAtkTimer = 10; 
+        this.freezeTimer = 0; this.slowTimer = 0; this.slowPercent = 0.5;
+        this.slimeTimer = 2.0; // Thời gian chờ nhảy (2s)
+        this.vx = 0; // Vận tốc lướt theo trục X
+        this.vy = 0; // Vận tốc lướt theo trục Y
+        this.isDashing = false; // Trạng thái đang lướt
+        this.dragonSkillActive = false; // Trạng thái đang giật điện
+        this.dragonSkillTimer = 0;      // Thời gian duy trì chiêu (5s)
+        this.dragonSkillCD = 0;         // Hồi chiêu (25s)
+        this.dragonTickTimer = 0;       // Đếm để gây dame mỗi 0.5s
+    }
+    update(dt) {
+        if(freezeTimer > 0) return; 
+        if (this.freezeTimer > 0) { this.freezeTimer -= dt; return; }
+        const distSq = getDistSq(this, hero);
+        let moveSpeed = this.speed;
+        if (this.slowTimer > 0) { moveSpeed *= this.slowPercent; this.slowTimer -= dt; }
+        if (this.type === 'LIGHT_DRAGON') {
+            document.getElementById('boss-hud').style.display = 'flex';
+            document.getElementById('boss-hp-fill').style.width = (this.hp / this.maxHp * 100) + '%';
+            document.getElementById('boss-name').innerText = `LIGHT DRAGON (LV.${bossLevel})`;
+            document.getElementById('boss-name').style.color = "#f1c40f"; // Màu vàng cho rồng
+
+            // 1. Xử lý Skill Giật Điện (Cấu rỉa)
+            if (this.dragonSkillCD > 0) this.dragonSkillCD -= dt;
+
+            if (this.dragonSkillActive) {
+                // Đang trong trạng thái giật điện
+                this.dragonSkillTimer -= dt;
+                this.dragonTickTimer -= dt;
+                
+                // Gây sát thương mỗi 0.5s
+                if (this.dragonTickTimer <= 0) {
+                    let rangeSq = 300 * 300; // Tầm ảnh hưởng 300
+                    let shockDmg = 25 * bossLevel; // 25 ST / Lv
+                    
+                    if (getDistSq(this, hero) < rangeSq) {
+                        hero.takeDamage(shockDmg);
+                        spawnFloatingText(`-${shockDmg}⚡`, hero.x, hero.y - 20, "#f1c40f");
+                    }
+                    // Visual hiệu ứng nổ điện xung quanh
+                    effects.push(new Explosion(this.x, this.y, 280, 'rgba(241, 196, 15, 0.5)'));
+                    this.dragonTickTimer = 0.5;
+                }
+
+                if (this.dragonSkillTimer <= 0) {
+                    this.dragonSkillActive = false;
+                    this.dragonSkillCD = 25; // Hồi chiêu 25s
+                }
+            } else {
+                // Kiểm tra kích hoạt skill nếu hồi chiêu xong và Hero lại gần
+                let distToHero = getDistSq(this, hero);
+                if (this.dragonSkillCD <= 0 && distToHero < 250 * 250) {
+                    this.dragonSkillActive = true;
+                    this.dragonSkillTimer = 5; // Tồn tại 5s
+                    this.dragonTickTimer = 0;
+                    spawnFloatingText("THUNDER AURA!", this.x, this.y - 60, "#fff");
+                }
+            }
+
+            // 2. Xử lý Tấn Công (Bắn cầu ánh sáng) & Di chuyển
+            // Rồng giữ khoảng cách như Archer nhưng trâu hơn
+            let desiredDist = 350; 
+            let currentDist = Math.sqrt(distSq);
+            let a = Math.atan2(hero.y - this.y, hero.x - this.x);
+
+            // Di chuyển giữ vị trí
+            if (currentDist > desiredDist + 50) { 
+                this.x += Math.cos(a) * moveSpeed * dt; 
+                this.y += Math.sin(a) * moveSpeed * dt; 
+            } else if (currentDist < desiredDist - 50) { 
+                this.x -= Math.cos(a) * (moveSpeed * 0.8) * dt; 
+                this.y -= Math.sin(a) * (moveSpeed * 0.8) * dt; 
+            }
+
+            // Bắn đạn
+            this.attackTimer -= dt;
+            if (this.attackTimer <= 0) {
+                // Đạn to hơn (size 25), damage theo level (100 * level)
+                let bulletDmg = 100 * bossLevel;
+                projectiles.push(new Projectile(this.x, this.y, a, 600, bulletDmg, 900, 25, {pierce: 1}, '#fff', true));
+                this.attackTimer = 2.5; // Tốc bắn chậm hơn boss thường một chút vì đạn to
+            }
+            
+            // Return để không chạy logic di chuyển mặc định bên dưới
+            return; 
+        }
+        if(this.type === 'BOSS') {
+            document.getElementById('boss-hud').style.display = 'flex';
+            document.getElementById('boss-hp-fill').style.width = (this.hp / this.maxHp * 100) + '%';
+            document.getElementById('boss-name').innerText = `BOSS LEVEL ${bossLevel}`;
+        }
+
+        if (this.type === 'MAGE') {
+            this.globalAtkTimer -= dt;
+            if (this.globalAtkTimer <= 0) {
+                this.globalAtkTimer = 10;
+                let finalDmg = 35;
+                hero.takeDamage(finalDmg);
+                if (hero.thorns > 0) { this.takeDamage(finalDmg * hero.thorns); }
+                effects.push(new LightningBolt(hero.x, hero.y - 300, hero.x, hero.y, 20));
+                spawnFloatingText("35", hero.x, hero.y - 20, "#9b59b6");
+            }
+        }
+        if (this.type.includes('SLIME')) {
+            // Logic riêng cho Slime: Đứng yên -> Lướt mỗi 2s
+            this.slimeTimer -= dt;
+    
+            // Hết thời gian chờ -> Bắt đầu lướt về phía người chơi
+            if (this.slimeTimer <= 0) {
+                let a = Math.atan2(hero.y - this.y, hero.x - this.x);
+                this.vx = Math.cos(a) * this.speed;
+                this.vy = Math.sin(a) * this.speed;
+                this.slimeTimer = 2.0; // Reset chờ 2s
+                this.isDashing = true;
+            }
+
+            // Áp dụng di chuyển (Ma sát để dừng lại từ từ)
+            this.x += this.vx * dt;
+            this.y += this.vy * dt;
+            this.vx *= 0.92; // Ma sát trượt (giảm tốc dần)
+            this.vy *= 0.92;
+    
+            // Nếu tốc độ quá chậm thì coi như dừng hẳn
+            if (Math.abs(this.vx) < 10 && Math.abs(this.vy) < 10) this.isDashing = false;
+
+            // Va chạm gây sát thương khi đang lướt
+            // (Logic gây dam chạm người đã có sẵn ở đoạn code cũ bên dưới, không cần viết lại)
+        }
+        
+        else if (this.type === 'ARCHER' || this.type === 'MAGE') {
+            let desiredDist = 400; let currentDist = Math.sqrt(distSq);
+            let a = Math.atan2(hero.y - this.y, hero.x - this.x);
+            if (currentDist > desiredDist + 50) { this.x += Math.cos(a) * moveSpeed * dt; this.y += Math.sin(a) * moveSpeed * dt; } 
+            else if (currentDist < desiredDist - 50) { this.x -= Math.cos(a) * (moveSpeed * 0.5) * dt; this.y -= Math.sin(a) * (moveSpeed * 0.5) * dt; }
+            this.attackTimer -= dt;
+            if (this.attackTimer <= 0) { projectiles.push(new Projectile(this.x, this.y, a, 500, this.damage, 600, 6, {pierce:1}, this.color, true)); this.attackTimer = 3; }
+        } else {
+            if(distSq > (this.radius + hero.radius)**2) {
+                const a = Math.atan2(hero.y - this.y, hero.x - this.x);
+                this.x += Math.cos(a)*moveSpeed*dt; this.y += Math.sin(a)*moveSpeed*dt;
+            } else { 
+                let dmgDealt = this.damage * dt; hero.takeDamage(dmgDealt); 
+                if (hero.thorns > 0) this.takeDamage(dmgDealt * hero.thorns);
+            }
+        }
+
+        if(this.type === 'HEALER') {
+            this.healCD -= dt;
+            if(this.healCD <= 0) {
+                let rangeSq = 200*200; let count = 0;
+                enemies.forEach(e => { if(e !== this && count < 10 && getDistSq(this, e) < rangeSq) { e.hp = Math.min(e.maxHp, e.hp + 100); count++; }});
+                if(count > 0) effects.push(new Explosion(this.x, this.y, 200, 'rgba(46, 213, 115, 0.3)'));
+                this.healCD = 5;
+            }
+        }
+        if(this.type === 'SUMMONER') {
+            this.summonCD -= dt;
+            if(this.summonCD <= 0) {
+                let minion = new Enemy('NORMAL'); minion.x = this.x; minion.y = this.y; minion.hp *= 0.7; enemies.push(minion);
+                spawnFloatingText("SUMMON!", this.x, this.y - 30, "#9b59b6"); this.summonCD = 8;
+            }
+        }
+    }
+    draw() {
+        
+        ctx.fillStyle = this.color; if (this.freezeTimer > 0) ctx.fillStyle = '#74b9ff'; 
+        if (this.type.includes('SLIME')) {
+            // Vẽ hình hơi dẹt nếu đang chờ, hình dài nếu đang lướt
+            let scaleX = this.isDashing ? 1.2 : 1.0;
+            let scaleY = this.isDashing ? 0.8 : 1.0;
+    
+            // Hiệu ứng "nhún" chuẩn bị nhảy
+            if (!this.isDashing && this.slimeTimer < 0.5) { // 0.5s trước khi nhảy
+                scaleX = 0.8; scaleY = 1.2; // Co lại
+            }
+
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.scale(scaleX, scaleY);
+            ctx.beginPath(); 
+            ctx.arc(0, 0, this.radius, 0, Math.PI*2); // Vẽ tại 0,0 do đã translate
+            ctx.fill();
+            ctx.restore();
+        } else {
+            // Vẽ tròn bình thường cho quái khác
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        }
+        if(this.hp < this.maxHp && this.type !== 'BOSS') {
+            ctx.fillStyle = 'red'; ctx.fillRect(this.x-15, this.y-this.radius-8, 30, 4);
+            ctx.fillStyle = '#2ecc71'; ctx.fillRect(this.x-15, this.y-this.radius-8, 30*(this.hp/this.maxHp), 4);
+        }
+        if(this.type === 'BOSS') {
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = 4; ctx.stroke();
+            ctx.fillStyle = 'yellow'; ctx.font='20px Arial'; ctx.textAlign='center'; ctx.fillText('☠️', this.x, this.y + 8);
+        }
+        if(this.type === 'HEALER') { ctx.fillStyle = 'white'; ctx.font='16px Arial'; ctx.textAlign='center'; ctx.fillText('+', this.x, this.y+5); }
+        if(this.type === 'FAST') { ctx.fillStyle = 'yellow'; ctx.font='12px Arial'; ctx.textAlign='center'; ctx.fillText('⚡', this.x, this.y+4); }
+        if(this.type === 'ARCHER') { ctx.fillStyle = 'black'; ctx.font='12px Arial'; ctx.textAlign='center'; ctx.fillText('🏹', this.x, this.y+4); }
+        if(this.type === 'MAGE') { ctx.fillStyle = 'white'; ctx.font='12px Arial'; ctx.textAlign='center'; ctx.fillText('🔮', this.x, this.y+4); }
+        if(this.type === 'TANK') { ctx.strokeStyle = '#bdc3c7'; ctx.lineWidth=3; ctx.stroke(); }
+        if(this.slowTimer > 0) { ctx.font='10px Arial'; ctx.fillText('SLOW', this.x, this.y - this.radius - 12); }
+    }
+    takeDamage(amt) {
+        this.hp -= amt;
+        if(this.hp <= 0) { 
+            if (this.type === 'SLIME_BIG') {
+                // Boss chết -> Tạo 2 con dạng 2 (MED)
+                for(let i=0; i<2; i++) {
+                    let child = new Enemy('SLIME_MED');
+                    child.x = this.x + (Math.random()-0.5)*40; 
+                    child.y = this.y + (Math.random()-0.5)*40;
+                    enemies.push(child);
+                }
+                spawnFloatingText("SPLIT!", this.x, this.y, "#badc58");
+                return; 
+            }
+            if (hero.type === 'NEUSOLD') {
+                hero.mana = Math.min(hero.maxMana, hero.mana + 2);
+                // spawnFloatingText("+2 MP", this.x, this.y, "#3498db"); // Bỏ comment nếu muốn hiện chữ
+            }
+            if (hero.type === 'DUALATASATA') {
+                hero.maxHp += 2;
+                hero.hp += 2;
+                spawnFloatingText("+2 HP", hero.x, hero.y, "#2ecc71");
+            }
+            if (this.type === 'SLIME_MED') {
+                // Dạng 2 chết -> Tạo 3 con dạng 3 (SMALL)
+                for(let i=0; i<3; i++) {
+                    let child = new Enemy('SLIME_SMALL');
+                    child.x = this.x + (Math.random()-0.5)*30;
+                    child.y = this.y + (Math.random()-0.5)*30;
+                    enemies.push(child);
+                }
+                spawnFloatingText("SPLIT!", this.x, this.y, "#6ab04c");
+                return;
+            }
+    
+            if (this.type === 'SLIME_SMALL') {
+                spawnFloatingText("POP!", this.x, this.y, "#fff");
+            }
+            score += ((this.type === 'BOSS' || this.type === 'LIGHT_DRAGON') ? 1000 : 10); 
+            
+            if(this.type === 'BOSS' || this.type === 'LIGHT_DRAGON') {
+            bossInstance = null;
+            document.getElementById('boss-hud').style.display = 'none';
+            
+            // --- LOGIC DROP ITEM THÔNG MINH THEO TIER 1-10 ---
+            
+            // 1. Xác định Tier cơ bản dựa trên bossLevel
+            // Cứ mỗi 5 level boss tăng 1 Tier, tối đa Tier 10
+            let baseTier = Math.min(10, Math.floor(bossLevel / 5) + 2); 
+            
+            // Nếu là Rồng, cho Tier cao hơn Boss thường 1 bậc
+            if (this.type === 'LIGHT_DRAGON') {
+                baseTier = Math.min(10, baseTier + 1);
+            }
+
+            // 2. Xác định số lượng ngọc rơi ra
+            // Không nên rơi quá nhiều tránh lag, tầm 10-15 viên là đẹp nhất
+            let dropCount = 8 + (bossLevel % 5); 
+
+            // 3. Thực hiện rơi ngọc
+            for(let k=0; k < dropCount; k++) {
+                // Rồng văng ngọc xa hơn Boss thường
+                let spread = (this.type === 'LIGHT_DRAGON') ? 400 : 250;
+                
+                spawnPickup(
+                    this.x + (Math.random()-0.5) * spread, 
+                    this.y + (Math.random()-0.5) * spread, 
+                    'EXP', 
+                    baseTier
+                );
+            }
+
+            // Các hiệu ứng đi kèm
+            score += ((this.type === 'LIGHT_DRAGON') ? 10000 : 2000); 
+            bossLevel++; 
+            lastBossDeathTime = gameTime;
+            
+            let bossName = (this.type === 'LIGHT_DRAGON') ? "ANCIENT DRAGON SLAIN!" : "BOSS DEFEATED!";
+            spawnFloatingText(bossName, this.x, this.y, "#f1c40f"); 
+            spawnFloatingText("NEXT BOSS: 60s", this.x, this.y + 30, "#fff");
+            
+            // Hiệu ứng nổ lớn
+            effects.push(new Explosion(this.x, this.y, 500, this.type === 'LIGHT_DRAGON' ? '#f1c40f' : '#e74c3c'));
+        } else {
+            // --- LOGIC MỚI: TĂNG CẤP NGỌC THEO BOSS LEVEL ---
+            
+            let dropTier = 1;
+            let rand = Math.random();
+            if (gameTime > 1000) {
+                if (rand < 0.1) dropTier = 6
+                else if (rand < 0.2) dropTier = 5
+                else if (rand < 0.3) dropTier = 4
+                else dropTier = 3
+            }
+            else if (gameTime > 800) {
+                if (rand < 0.1) dropTier = 5
+                else if (rand < 0.3) dropTier = 4
+                else dropTier = 3
+            }
+            // Sau 10 phút (600s): Tỉ lệ cao ra Tier 4, thấp ra Tier 3
+            else if (gameTime > 900) {
+                if (rand < 0.1) dropTier = 4; // 20% ra Tím
+                else dropTier = 3;            // 80% ra Xanh lá
+            }
+            // Sau 6 phút 40s (400s): Tỉ lệ cao ra Tier 3, thấp ra Tier 2
+            else if (gameTime > 400) {
+                if (rand < 0.1) dropTier = 3;
+                else dropTier = 2;      
+            }
+            // Sau 3 phút 20s (200s): Bắt đầu ra Tier 2
+            else if (gameTime > 200) {
+                if (rand < 0.1) dropTier = 2;
+                else dropTier = 1;
+            }
+
+            // Gọi hàm spawnPickup với tham số 'EXP' và Tier đã tính
+            spawnPickup(this.x, this.y, 'EXP', dropTier);
+            }
+        }
+    }
+}
+
+class PoisonZone {
+    constructor(x, y, radius, duration, dmgTick, isSlow) {
+        this.x = x; this.y = y; this.radius = radius; this.duration = duration;
+        this.dmgTick = dmgTick; this.isSlow = isSlow;
+        this.tickTimer = 0; this.dead = false;
+        this.maxDur = duration;
+    }
+    update(dt) {
+        this.duration -= dt; if(this.duration <= 0) this.dead = true;
+        this.tickTimer -= dt;
+        
+        if(this.tickTimer <= 0) {
+            let rSq = this.radius * this.radius;
+            let props = { isSkill: true };
+            if (this.isSlow) { props.status = 'SLOW'; }
+            
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rSq) {
+                    hero.applyHit(e, this.dmgTick * 2, props);
+                    if (this.isSlow) { e.slowTimer = 0.5; e.slowPercent = 0.85; } 
+                }
+            });
+            this.tickTimer = 0.5; 
+        }
+    }
+    draw() {
+        let opacity = this.duration / this.maxDur;
+        ctx.fillStyle = `rgba(0, 148, 50, ${0.3 * opacity})`;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = `rgba(163, 203, 56, ${0.6 * opacity})`; ctx.lineWidth = 2; ctx.stroke();
+        
+        if (Math.random() < 0.02) {
+            let bx = this.x + (Math.random()-0.5)*this.radius*1.5;
+            let by = this.y + (Math.random()-0.5)*this.radius*1.5;
+            effects.push(new Explosion(bx, by, 10, '#A3CB38'));
+        }
+    }
+}
+
+class Chest {
+    constructor() {
+        let angle = Math.random() * Math.PI * 2; let dist = 800 + Math.random() * 500;
+        this.x = hero.x + Math.cos(angle) * dist; this.y = hero.y + Math.sin(angle) * dist;
+        this.x = Math.max(100, Math.min(this.x, WORLD_WIDTH-100)); this.y = Math.max(100, Math.min(this.y, WORLD_HEIGHT-100));
+        this.hp = 2000 + (gameTime * 10); this.maxHp = this.hp; this.dead = false;
+        spawnFloatingText("TREASURE SPAWNED!", this.x, this.y, "#f1c40f");
+    }
+    update(dt) { }
+    takeDamage(amt) {
+        this.hp -= amt;
+        if(this.hp <= 0) {
+            this.dead = true; 
+            spawnFloatingText("JACKPOT!", this.x, this.y, "#e67e22");
+            
+            // --- CÔNG THỨC MỚI CHO CHEST ---
+            // Càng chơi lâu (gameTime lớn), số lượng rớt càng khủng khiếp
+            // Cơ bản: 20 viên. Mỗi phút trôi qua + thêm 15 viên.
+            let timeMultiplier = Math.floor(gameTime / 60); 
+            let drops = 25 + (timeMultiplier * 25);
+            
+            // Nếu chơi trên 10 phút, nhân đôi số lượng
+            if (gameTime > 600) drops *= 2;
+
+            for(let i=0; i<drops; i++) { 
+                // Tỉ lệ ra đồ xịn tăng theo thời gian
+                let tier = 1; // Mặc định vàng
+                let rnd = Math.random();
+                
+                // Sau 5 phút: 30% ra Xanh dương (Tier 2)
+                if (timeMultiplier >= 5 && rnd < 0.3) tier = 2;
+                // Sau 10 phút: 10% ra Xanh lá (Tier 3), 40% ra Xanh dương
+                if (timeMultiplier >= 10) {
+                    if (rnd < 0.1) tier = 3;
+                    else if (rnd < 0.5) tier = 2;
+                }
+
+                // Vật phẩm hồi máu (10% tỉ lệ) hoặc EXP
+                let type = Math.random() < 0.1 ? 'HP' : 'EXP';
+                
+                // Văng ra xa hơn nếu số lượng nhiều
+                let spread = 100 + (drops * 2); 
+                
+                spawnPickup(
+                    this.x + (Math.random()-0.5)*spread, 
+                    this.y + (Math.random()-0.5)*spread, 
+                    type, 
+                    tier
+                ); 
+            }
+            // -----------------------------
+        }
+    }
+    draw() {
+        ctx.fillStyle = '#8e44ad'; ctx.fillRect(this.x-20, this.y-15, 40, 30);
+        ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 3; ctx.strokeRect(this.x-20, this.y-15, 40, 30);
+        ctx.fillStyle = '#f1c40f'; ctx.fillRect(this.x-5, this.y-5, 10, 5);
+        ctx.fillStyle = 'red'; ctx.fillRect(this.x-20, this.y-25, 40, 4); ctx.fillStyle = '#2ecc71'; ctx.fillRect(this.x-20, this.y-25, 40*(this.hp/this.maxHp), 4);
+    }
+}
+
+const XP_TIERS = {  1: { color: '#f1c40f', val: 30, r: 6 },
+                    2: { color: '#3498db', val: 1500, r: 7 },
+                    3: { color: '#2ecc71', val: 75000, r: 8 },
+                    4: { color: '#9b59b6', val: 3750000, r: 9 },
+                    5: { color: '#e74c3c', val: 187500000, r: 10 },
+                    6: { color: '#e74c3c', val: 9375000000, r: 15 },
+                    7: { color: '#e74c3c', val: 468750000000, r: 20 },
+                    8: { color: '#e74c3c', val: 23437500000000, r: 25 },
+                    9: { color: '#e74c3c', val: 100000000000000, r: 30 },
+                    10: { color: '#e74c3c', val: 1000000000000000, r: 35 }
+                };
+
+class Pickup {
+    constructor(x, y, type, xpTier = 1) { 
+        this.x=x; this.y=y; this.type=type; this.xpTier = xpTier;
+        // Đảm bảo lấy đúng giá trị theo Tier
+        if (type === 'EXP') { 
+            this.val = XP_TIERS[this.xpTier].val; 
+            this.radius = XP_TIERS[this.xpTier].r; 
+            this.color = XP_TIERS[this.xpTier].color; 
+        } else { 
+            this.radius = 8; 
+        }
+        this.dead=false; 
+        // Thêm biến để tạo hiệu ứng hút vào nhau mượt hơn
+        this.vx = 0;
+        this.vy = 0;
+    }
+
+    upgradeTier() {
+        if(this.xpTier < 3) {
+            this.xpTier++;
+            // Cập nhật lại hình ảnh, KHÔNG reset this.val
+            this.radius = XP_TIERS[this.xpTier].r; 
+            this.color = XP_TIERS[this.xpTier].color;
+            spawnFloatingText("MERGE!", this.x, this.y, this.color);
+        }
+    }
+
+    update(dt) {
+        let distSq = getDistSq(this, hero);
+        
+        // Hút về phía Hero (giữ nguyên logic cũ)
+        if(distSq < 300*300) { 
+            this.x += (hero.x - this.x) * 5 * dt; 
+            this.y += (hero.y - this.y) * 5 * dt; 
+        }
+
+        // Xử lý ăn vật phẩm
+        if(distSq < (this.radius + hero.radius + 10)**2) {
+            if(this.type === 'EXP') hero.gainExp(this.val);
+            else { 
+                hero.hp = Math.min(hero.maxHp, hero.hp + hero.maxHp*0.1); 
+                spawnFloatingText("+10% HP", hero.x, hero.y, "#2ecc71"); 
+            }
+            this.dead = true;
+        }
+
+        // Áp dụng vận tốc hút (từ hệ thống gộp EXP mới)
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        
+        // Giảm tốc độ từ từ (Ma sát) để không bay loạn xạ
+        this.vx *= 0.9;
+        this.vy *= 0.9;
+    }
+
+    draw() {
+        ctx.fillStyle = this.type === 'EXP' ? this.color : '#e74c3c';
+        ctx.beginPath(); 
+        if(this.type === 'EXP') { ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); } 
+        else { ctx.rect(this.x-5, this.y-5, 10, 10); } 
+        ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth=1; ctx.stroke();
+    }
+}
+
+class MageVortex {
+    constructor(x, y, dmg, isSlow) { this.x = x; this.y = y; this.dmg = dmg; this.life = 5; this.radius = 180; this.tickTimer = 0; this.dead = false; this.isSlow = isSlow; }
+    update(dt) {
+        this.life -= dt; if(this.life <= 0) this.dead = true;
+        this.tickTimer -= dt;
+        if(this.tickTimer <= 0) {
+            let rSq = this.radius * this.radius;
+            for(let i=0; i<enemies.length; i++) { 
+                if(getDistSq(this, enemies[i]) < rSq) { 
+                    let props = {isSkill:true};
+                    if(this.isSlow) props.status = 'SLOW';
+                    hero.applyHit(enemies[i], this.dmg * 0.2, props); 
+                }
+            }
+            this.tickTimer = 0.2;
+        }
+    }
+    draw() {
+        ctx.strokeStyle = `rgba(52, 152, 219, ${this.life/5})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(this.x,this.y,this.radius,0,Math.PI*2); ctx.stroke();
+    }
+}
+
+class StaticField {
+    constructor(heroRef, dmg) { this.hero = heroRef; this.dmg = dmg; this.life = 3; this.radius = 200; this.tickTimer = 0; this.dead = false; }
+    update(dt) {
+        this.life -= dt; if(this.life <= 0) this.dead = true;
+        this.tickTimer -= dt;
+        if(this.tickTimer <= 0) {
+            let rSq = this.radius * this.radius;
+            for(let i=0; i<enemies.length; i++) { 
+                if(getDistSq(this.hero, enemies[i]) < rSq) { 
+                    hero.applyHit(enemies[i], this.dmg, {isSkill:true}); 
+                    effects.push(new LightningBolt(this.hero.x, this.hero.y, enemies[i].x, enemies[i].y, 10));
+                }
+            }
+            this.tickTimer = 0.5;
+        }
+    }
+    draw() {
+        ctx.strokeStyle = `rgba(155, 89, 182, 0.5)`; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(this.hero.x, this.hero.y, this.radius, 0, Math.PI*2); ctx.stroke();
+    }
+}
+
+class ThunderSphere {
+    constructor(x, y, angle, dmg) {
+        this.x = x; this.y = y; this.dmg = dmg; 
+        this.vx = Math.cos(angle) * 50; this.vy = Math.sin(angle) * 50;
+        this.life = 6; this.radius = 150; this.tickTimer = 0; this.dead = false; this.size = 20;
+    }
+    update(dt) {
+        this.life -= dt; if(this.life <= 0) this.dead = true;
+        this.x += this.vx * dt; this.y += this.vy * dt;
+        this.tickTimer -= dt;
+        if(this.tickTimer <= 0) {
+            let rSq = this.radius * this.radius;
+            for(let i=0; i<enemies.length; i++) { 
+                if(getDistSq(this, enemies[i]) < rSq) { 
+                    hero.applyHit(enemies[i], this.dmg, {isSkill:true});
+                    effects.push(new LightningBolt(this.x, this.y, enemies[i].x, enemies[i].y, 5));
+                }
+            }
+            this.tickTimer = 0.5;
+        }
+    }
+    draw() {
+        ctx.fillStyle = '#9b59b6'; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.stroke();
+        ctx.strokeStyle = `rgba(155, 89, 182, 0.3)`; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.stroke();
+    }
+}
+
+class LightningBolt {
+    constructor(x1, y1, x2, y2, duration = 15) {
+        this.x1=x1; this.y1=y1; this.x2=x2; this.y2=y2; this.life = duration; this.segments = [];
+        let dx = x2 - x1; let dy = y2 - y1; let dist = Math.hypot(dx, dy); let steps = Math.floor(dist / 20);
+        for(let i=0; i<steps; i++) {
+            let t = (i+1)/steps; let tx = x1 + dx*t; let ty = y1 + dy*t;
+            if (i < steps - 1) { tx += (Math.random()-0.5) * 20; ty += (Math.random()-0.5) * 20; } else { tx = x2; ty = y2; }
+            this.segments.push({x: tx, y: ty});
+        }
+        this.dead = false;
+    }
+    update(dt) { this.life--; if(this.life <= 0) this.dead = true; }
+    draw() {
+        ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(this.x1, this.y1);
+        for(let p of this.segments) ctx.lineTo(p.x, p.y); ctx.stroke();
+    }
+}
+
+class Turret {
+    constructor(x, y) { this.x=x; this.y=y; this.life=5; this.atkTimer=0; this.dead=false; }
+    update(dt) {
+        this.life -= dt; if(this.life <= 0) this.dead=true;
+        this.atkTimer -= dt;
+        if(this.atkTimer <= 0) {
+            let target = null; let minDistSq = 600*600;
+            for(let e of enemies) { let d = getDistSq(this, e); if(d < minDistSq) { minDistSq = d; target = e; } }
+            if(target) {
+                let a = Math.atan2(target.y - this.y, target.x - this.x);
+                projectiles.push(new Projectile(this.x, this.y, a, 1200, 15, 600, 3, {pierce:1, splash:0, isSkill: true}, '#bdc3c7', false));
+            }
+            this.atkTimer = 0.1;
+        }
+    }
+    draw() { ctx.fillStyle='#7f8c8d'; ctx.fillRect(this.x-10, this.y-10, 20, 20); ctx.fillStyle='#f1c40f'; ctx.fillRect(this.x-4, this.y-4, 8, 8); }
+}
+
+class VemySoldier {
+    constructor(x, y, hp) {
+        this.x = x; this.y = y; 
+        this.hp = hp; this.maxHp = hp;
+        this.lifeTime = 7.0; 
+        this.radius = 12;
+        this.dead = false;
+        this.damage = 30 + (hero.dmg * 0.5); 
+        this.atkTimer = 0;
+    }
+    
+    update(dt) {
+        this.lifeTime -= dt;
+        if (this.lifeTime <= 0) {
+            this.dead = true;
+            effects.push(new Explosion(this.x, this.y, 30, '#fff'));
+            return;
+        }
+
+        let target = null;
+        let minDist = 600 * 600;
+        
+        for (let e of enemies) {
+            let d = getDistSq(this, e);
+            if (d < minDist) { minDist = d; target = e; }
+        }
+
+        if (target) {
+            let angle = Math.atan2(target.y - this.y, target.x - this.x);
+            this.x += Math.cos(angle) * 300 * dt;
+            this.y += Math.sin(angle) * 300 * dt;
+
+            if (minDist < (this.radius + target.radius + 10)**2) {
+                if (this.atkTimer <= 0) {
+                    hero.applyHit(target, this.damage, { isSkill: true });
+                    effects.push(new SlashEffect(this.x, this.y, angle, 20, false));
+                    this.atkTimer = 0.5; 
+                }
+            }
+        }
+        
+        if (this.atkTimer > 0) this.atkTimer -= dt;
+    }
+
+    draw() {
+        ctx.fillStyle = '#4834d4'; 
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        
+        ctx.fillStyle = '#2ecc71'; 
+        ctx.fillRect(this.x - 10, this.y - 20, 20 * (this.hp / this.maxHp), 3);
+    }
+    
+    takeDamage(amt) {
+        this.hp -= amt * 0.5; 
+        if (this.hp <= 0) this.dead = true;
+    }
+}
+
+class SpinningSword {
+    constructor(heroRef, startAngle, duration) {
+        this.hero = heroRef;
+        this.angle = startAngle;
+        this.life = duration;
+        this.dist = 120;
+        this.radius = 10;
+        this.dead = false;
+        // 3s một vòng => tốc độ góc = 2PI / 3 rad/s
+        this.angularSpeed = (Math.PI * 2) / 3;
+        this.hitTimer = 0;
+    }
+
+    update(dt) {
+        this.life -= dt;
+        if (this.life <= 0) this.dead = true;
+        
+        this.angle += this.angularSpeed * dt;
+        this.x = this.hero.x + Math.cos(this.angle) * this.dist;
+        this.y = this.hero.y + Math.sin(this.angle) * this.dist;
+        
+        // Gây sát thương mỗi 0.5s nếu chạm
+        this.hitTimer -= dt;
+        if (this.hitTimer <= 0) {
+            let hitAny = false;
+            let rSq = (this.radius + 20)**2; // Bán kính va chạm kiếm
+            let dmg = this.hero.dmg * 2.5 * this.hero.skillAmp * 0.75; // 75% ST Phép
+            
+            enemies.forEach(e => {
+                if (getDistSq(this, e) < rSq) {
+                    this.hero.applyHit(e, dmg, {isSkill: true});
+                    hitAny = true;
+                }
+            });
+            
+            if (hitAny) this.hitTimer = 0.5; // Cooldown damage để ko sốc dame
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle + Math.PI/2); // Quay kiếm hướng ra ngoài
+        
+        ctx.fillStyle = '#bcaaa4';
+        ctx.beginPath();
+        ctx.moveTo(0, -20);
+        ctx.lineTo(5, 5);
+        ctx.lineTo(0, 25);
+        ctx.lineTo(-5, 5);
+        ctx.fill();
+        ctx.strokeStyle = '#5d4037';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+    
+    // Hàm dummy để tránh lỗi nếu loop gọi
+    takeDamage(amt) {} 
+}
+class YornSigil {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.radius = 200;
+        this.life = 5.0; // Tồn tại 5s
+        this.dead = false;
+    }
+
+    update(dt) {
+        this.life -= dt;
+        if (this.life <= 0) this.dead = true;
+
+        // Quét kẻ địch trong vùng
+        let rSq = this.radius * this.radius;
+        enemies.forEach(e => {
+            if (getDistSq(this, e) < rSq) {
+                // Trừ 75% tốc chạy
+                e.slowTimer = 0.1; // Làm chậm liên tục khi đứng trong đó
+                e.slowPercent = 0.25; // Còn 25% tốc chạy (bị trừ 75%)
+            }
+        });
+    }
+
+    draw() {
+        // Vẽ vòng tròn ma pháp
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        // Xoay nhẹ cho đẹp
+        ctx.rotate(gameTime); 
+        
+        ctx.strokeStyle = "rgba(241, 196, 15, 0.8)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        
+        // Vẽ sao 6 cánh hoặc họa tiết
+        for (let i = 0; i < 6; i++) {
+            ctx.rotate(Math.PI / 3);
+            ctx.moveTo(0, 0);
+            ctx.lineTo(this.radius, 0);
+        }
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(241, 196, 15, 0.15)";
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+    
+    // Hàm dummy để tránh lỗi
+    takeDamage(amt) {} 
+}
+
+class FanSlashEffect {
+    constructor(heroRef, angle, duration, totalTicks, tickInterval) {
+        this.hero = heroRef;
+        this.baseAngle = angle;
+        this.life = duration;
+        this.totalTicks = totalTicks;
+        this.currentTicks = 0;
+        this.tickTimer = 0;
+        this.tickInterval = tickInterval;
+        this.dead = false;
+        this.radius = 250; // Tầm chiêu 2
+    }
+
+    update(dt) {
+        this.life -= dt;
+        if (this.life <= 0) this.dead = true;
+
+        this.tickTimer -= dt;
+        if (this.tickTimer <= 0 && this.currentTicks < this.totalTicks) {
+            this.currentTicks++;
+            this.tickTimer = this.tickInterval;
+
+            // Logic gây damage và hồi máu
+            // Sát thương mỗi hit nhỏ, khoảng 30% DMG tay
+            let damagePerHit = this.hero.dmg * 0.3;
+            let rangeSq = this.radius * this.radius;
+            let hitAny = false;
+
+            // Vẽ hiệu ứng tia chọc
+            // Random góc lệch trong khoảng -45 đến +45 độ (PI/4)
+            let spread = (Math.random() - 0.5) * (Math.PI / 2);
+            let thrustAngle = this.baseAngle + spread;
+            effects.push(new SlashEffect(this.hero.x, this.hero.y, thrustAngle, this.radius, true));
+
+            enemies.forEach(e => {
+                if (getDistSq(this.hero, e) < rangeSq) {
+                    // Kiểm tra góc hình quạt
+                    let eAng = Math.atan2(e.y - this.hero.y, e.x - this.hero.x);
+                    let diff = Math.abs(eAng - this.baseAngle);
+                    if (diff > Math.PI) diff = 2 * Math.PI - diff;
+                    
+                    if (diff < (Math.PI / 4)) { // Góc quét 90 độ (45 mỗi bên)
+                        this.hero.applyHit(e, damagePerHit, {isSkill: true});
+                        hitAny = true;
+                    }
+                }
+            });
+
+            if (hitAny) {
+                // Hồi 1.5% máu tối đa mỗi hit
+                let healAmt = this.hero.maxHp * 0.015;
+                this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + healAmt);
+                // Hiệu ứng visual hồi máu nhỏ
+                spawnFloatingText("+", this.hero.x, this.hero.y - 10, "#2ecc71");
+            }
+        }
+    }
+    draw() {} // Hiệu ứng được push vào mảng effects
+    takeDamage(amt) {}
+}
+
+
+class SlashEffect {
+    constructor(x,y,a,r, linear){this.x=x;this.y=y;this.a=a;this.r=r;this.l=0.15;this.dead=false; this.linear=linear; this.color = "rgba(255,255,255,0.8)";}
+    update(dt){this.l-=dt; if(this.l<=0)this.dead=true;}
+    draw(){ 
+        ctx.strokeStyle=this.color; ctx.lineWidth=4; ctx.beginPath(); 
+        if (this.linear) { ctx.moveTo(this.x, this.y); ctx.lineTo(this.x + Math.cos(this.a)*this.r, this.y + Math.sin(this.a)*this.r); } 
+        else { ctx.arc(this.x,this.y,this.r,this.a-1,this.a+1); }
+        ctx.stroke(); 
+    }
+}
+
+class Explosion {
+    constructor(x,y,m,c){this.x=x;this.y=y;this.r=5;this.max=m;this.c=c;this.dead=false;}
+    update(dt){this.r += 600*dt; if(this.r>this.max)this.dead=true;}
+    draw(){ ctx.strokeStyle=this.c; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.stroke(); }
+}
+
+class MaggazicSoundWave {
+    constructor(x, y, angle, speed, startDmg, maxDist, startSize, color) {
+        this.x = x; this.y = y;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.angle = angle;
+        this.speed = speed;
+        
+        this.startDmg = startDmg;
+        this.currDmg = startDmg;
+        
+        this.maxDist = maxDist;
+        this.distTraveled = 0;
+        
+        this.size = startSize;
+        this.color = color;
+        this.dead = false;
+        
+        // Danh sách quái đã trúng đòn để không hit 1 con nhiều lần
+        this.hitList = [];
+    }
+
+    update(dt) {
+        // Di chuyển
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.distTraveled += this.speed * dt;
+        
+        // Tăng kích thước theo quãng đường (Càng xa càng to)
+        this.size += 80 * dt; 
+        
+        // GIẢM Sát thương theo quãng đường (Càng xa càng bé)
+        // Khi đi hết quãng đường, dmg còn 20%
+        let progress = this.distTraveled / this.maxDist;
+        this.currDmg = this.startDmg * (1 - progress * 0.8);
+        if (this.currDmg < 0) this.currDmg = 0;
+
+        if (this.distTraveled >= this.maxDist) this.dead = true;
+
+        // Check va chạm
+        let rSq = this.size * this.size;
+        for (let e of enemies) {
+            // Nếu quái chưa bị hit bởi sóng này
+            if (!this.hitList.includes(e)) {
+                let d = getDistSq(this, e);
+                // Hitbox du di một chút
+                if (d < (this.size + e.radius)**2) {
+                    hero.applyHit(e, this.currDmg, {isSkill: true, status: 'SLOW'});
+                    // Thêm vào danh sách đã hit
+                    this.hitList.push(e);
+                }
+            }
+        }
+    }
+
+    draw() {
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        // Vẽ hình sóng âm (vài cung tròn)
+        ctx.arc(this.x, this.y, this.size, this.angle - 1, this.angle + 1);
+        ctx.stroke();
+        
+        // Vẽ thêm 1 cung nhỏ bên trong cho đẹp
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.7, this.angle - 0.8, this.angle + 0.8);
+        ctx.stroke();
+    }
+    
+    takeDamage(amt) {} // Dummy
+}
+// Class Bom C4 cho AKATSU
+class AkatsuC4 {
+    constructor(x, y, dmg) {
+        this.x = x; 
+        this.y = y; 
+        this.dmg = dmg; 
+        this.timer = 3.0; // 3 giây đếm ngược
+        this.radius = 150; // Phạm vi nổ lớn
+        this.dead = false;
+    }
+
+    update(dt) {
+        this.timer -= dt;
+        if (this.timer <= 0) {
+            this.explode();
+        }
+    }
+
+    explode() {
+        this.dead = true;
+        // Hiệu ứng hình ảnh nổ
+        effects.push(new Explosion(this.x, this.y, this.radius, '#e67e22'));
+        spawnFloatingText("BOOM!!!", this.x, this.y, "#c0392b");
+
+        // Gây sát thương khủng
+        let rSq = this.radius * this.radius;
+        enemies.forEach(e => {
+            if (getDistSq(this, e) < rSq) {
+                hero.applyHit(e, this.dmg, {isSkill: true, status: 'KNOCKBACK', knockbackForce: 50});
+            }
+        });
+    }
+
+    draw() {
+        // Vẽ vòng tròn cảnh báo
+        ctx.strokeStyle = `rgba(231, 76, 60, ${Math.random()})`; // Nhấp nháy đỏ
+        ctx.lineWidth = 3;
+        ctx.beginPath(); 
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); 
+        ctx.stroke();
+
+        // Vẽ bộ đếm giờ ở giữa
+        ctx.fillStyle = '#fff';
+        ctx.font = '20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(this.timer.toFixed(1), this.x, this.y + 5);
+
+        // Vẽ cục C4 nhỏ
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(this.x - 10, this.y - 10, 20, 20);
+    }
+    
+    // Hàm dummy để tránh lỗi nếu game gọi hàm này
+    takeDamage(amt) {} 
+}
+class AsaggyUltSlash {
+    constructor(heroRef) {
+        this.hero = heroRef;
+        this.life = 1.0; // Tồn tại 1s
+        this.totalHits = 20;
+        this.hitCounter = 0;
+        this.interval = 1.0 / 20; // 0.05s
+        this.timer = 0;
+        this.dead = false;
+        this.radius = 100; // Tầm đánh xung quanh khi chọc
+    }
+
+    update(dt) {
+        this.life -= dt;
+        if (this.life <= 0) this.dead = true;
+
+        this.timer -= dt;
+        if (this.timer <= 0 && this.hitCounter < this.totalHits) {
+            this.hitCounter++;
+            this.timer = this.interval;
+
+            // Mỗi hit gây sát thương nhỏ
+            // Tổng dmg nên cân bằng, ví dụ mỗi hit 30% sát thương phép
+            let dmgPerHit = (this.hero.dmg * 2.5 * this.hero.skillAmp) * 0.2; 
+            let rangeSq = this.radius * this.radius;
+            let hitAny = false;
+
+            // Visual chọc
+            let rAngle = Math.random() * Math.PI * 2;
+            effects.push(new SlashEffect(this.hero.x, this.hero.y, rAngle, 40, true));
+
+            enemies.forEach(e => {
+                if (getDistSq(this.hero, e) < rangeSq) {
+                    this.hero.applyHit(e, dmgPerHit, {isSkill: true});
+                    hitAny = true;
+                }
+            });
+
+            if (hitAny) {
+                // Heal 10% sát thương phép mỗi lần trúng
+                // dmgPerHit chính là sát thương phép tính ở trên
+                let healAmt = dmgPerHit * 0.1;
+                this.hero.hp = Math.min(this.hero.maxHp, this.hero.hp + healAmt);
+            }
+        }
+    }
+    
+    draw() {
+        // Vẽ vùng ảnh hưởng mờ mờ
+        ctx.strokeStyle = `rgba(255, 255, 255, 0.2)`;
+        ctx.beginPath(); ctx.arc(this.hero.x, this.hero.y, this.radius, 0, Math.PI*2); ctx.stroke();
+    }
+    takeDamage(amt) {} // Dummy
+}
+class FloFlower {
+    constructor(x, y) {
+        this.x = x; this.y = y;
+        this.radius = 15;
+        this.life = 5.0; // Tồn tại 5s
+        this.dead = false;
+    }
+
+    update(dt) {
+        this.life -= dt;
+        if (this.life <= 0) this.dead = true;
+
+        // Kiểm tra Hero nhặt hoa
+        let distSq = getDistSq(this, hero);
+        if (distSq < (this.radius + hero.radius + 20)**2) {
+            // Kích hoạt nội tại: Hồi ngay chiêu 2
+            if (hero.type === 'FLORENTINO') {
+                hero.skills[2].cd = 0; // Hồi chiêu 2 lập tức
+                hero.atkTimer = 0; // Reset đòn đánh thường để chém tiếp ngay
+                spawnFloatingText("READY!", hero.x, hero.y, "#fd79a8");
+                
+                // Hồi một chút năng lượng
+                hero.mana = Math.min(hero.maxMana, hero.mana + 20);
+            }
+            this.dead = true;
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(gameTime * 2); // Xoay hoa
+        
+        // Vẽ bông hoa 
+        ctx.fillStyle = "#fd79a8";
+        for(let i=0; i<4; i++) {
+            ctx.beginPath();
+            ctx.ellipse(0, 10, 5, 10, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.rotate(Math.PI/2);
+        }
+        ctx.fillStyle = "#ffeaa7";
+        ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+        
+        ctx.restore();
+        
+        // Vẽ vòng sáng
+        ctx.strokeStyle = "rgba(253, 121, 168, 0.5)";
+        ctx.beginPath(); ctx.arc(this.x, this.y, 20, 0, Math.PI*2); ctx.stroke();
+    }
+    
+    takeDamage() {} // Không bị mất máu
+}
+
+let hero, enemies = [], projectiles = [], objects = [], effects = [], pickups = [];
+
+function spawnPickup(x, y, fixedType, xpTier) {
+    if (fixedType === 'EXP_AUTO') { pickups.push(new Pickup(x, y, 'EXP', 1)); return; }
+    let type = fixedType ? fixedType : (Math.random() < 0.03 ? 'HP' : 'EXP'); 
+    pickups.push(new Pickup(x, y, type, xpTier));
+}
+
+Hero.prototype.gainExp = function(amt) {
+    this.exp += amt;
+    if(this.exp >= this.expToLevel) {
+        this.exp -= this.expToLevel; 
+        this.level++; 
+        
+        this.expToLevel *= 1.3;
+
+        if (this.type === 'DUALATASATA') {
+            this.maxHp += 75; 
+            this.hp += 75;
+        } else {
+            this.maxHp += 50;  
+            this.hp += 50;
+        }
+let msg = "DMG UP (+5%)";
+        if (this.type === 'GONGUN') { 
+            this.baseDmg += 2; msg = "DMG UP (+2)"; 
+        }
+        else if (this.type === 'SHOTGUN') { 
+            this.baseDmg += 10; msg = "DMG UP (+10)"; 
+        }
+        // --- THÊM MỚI CHO GORGGER VÀ AKATSU TẠI ĐÂY ---
+        else if (this.type === 'GORGGER') {
+            this.baseDmg += 20; msg = "DMG UP (+20)";
+        }
+        else if (this.type === 'AKATSU') {
+            this.baseDmg += 15; msg = "DMG UP (+15)";
+        }
+        // ----------------------------------------------
+        else if (this.type === 'CASTUS') { 
+            this.armor = Math.min(0.8, this.armor + 0.03); 
+            msg = "ARMOR UP (+3%)";
+        }
+        else { 
+            this.baseDmg *= 1.05; // Các tướng khác vẫn tăng 5%
+            this.baseMagicDmg *= 1.05;
+        }
+        
+        if (this.type !== 'CASTUS') {
+            this.dmg = this.baseDmg; 
+            this.magicDmg = this.baseMagicDmg;
+        }
+        
+        msg += " & HP +50";
+        spawnFloatingText(msg, this.x, this.y - 30, "#e74c3c"); 
+        document.getElementById('levelup-msg').innerText = `Chỉ số đã tăng: ${msg}`;
+        
+        showUpgradeScreen();
+    }
+};
+
+const UPGRADES = [
+    { n: 'Cuồng Nộ', d: '+10 Sát thương tay (Cố định)', rarity: '#2ecc71', f: h => { h.baseDmg += 10; h.dmg = h.baseDmg; } },
+    { n: 'Tái Tạo', d: '+10 Hồi máu mỗi giây', rarity: '#2ecc71', f: h => h.hpRegen += 10 },
+    { n: 'Hút Máu', d: '+1.5% Hút máu (Đánh thường)', rarity: '#e74c3c', f: h => h.lifesteal += 0.015 },
+    { n: 'Hút Phép', d: '+0.5% Hút máu phép (Skill)', rarity: '#9b59b6', f: h => h.spellVamp += 0.005 },
+    { n: 'Khổng Lồ', d: '+100 Máu tối đa (Hồi phục ngay)', rarity: '#2ecc71', f: h => { h.maxHp += 100; h.hp += 100; } },
+    { n: 'Giáp Hoàng Kim', d: '+5% Miễn thương (Max 95%)', rarity: '#f1c40f', f: h => { h.armor = Math.min(0.95, h.armor + 0.05); } },
+    { n: 'Giáp Gai', d: '+15% Phản sát thương', rarity: '#e67e22', f: h => { h.thorns += 0.15; } },
+    { n: 'Bể Mana', d: '+2% Hồi mana tối đa/giây', rarity: '#3498db', f: h => h.manaRegenPct += 0.02 },
+    { n: 'Cuồng Phong', d: '+10% Tốc độ đánh', rarity: '#f1c40f', f: h => { h.atkCooldownBase *= 0.9; h.asUpgrades++; } },
+    { n: 'Mắt Ưng', d: '+10 Tầm đánh', rarity: '#3498db', f: h => h.atkRangeMod += 10 },
+    { n: 'Chí Mạng', d: '+10% Tỷ lệ chí mạng', rarity: '#e74c3c', f: h => h.critRate += 0.1 },
+    { n: 'Sát Thương Chí Mạng', d: 'Tăng 5% sát thương khi nổ chí mạng', rarity: '#e74c3c', f: h => h.critDamagePercent += 0.05 },
+    { n: 'Sách Phép', d: '+20 Sát thương phép (Cố định)', rarity: '#9b59b6', f: h => { h.baseMagicDmg += 20; h.magicDmg = h.baseMagicDmg; } },
+    { n: 'Đạn Nổ', d: '+5% Tỷ lệ nổ (Nổ 25% DMG)', rarity: '#e67e22', f: h => { h.splashChance += 0.05; h.splashDmgRatio = 0.25; } },
+    { n: 'Thần Tốc', d: '+30 Tốc độ chạy', rarity: '#3498db', f: h => h.speedMod += 30 },
+    { n: 'Nhanh Nhẹn', d: '-10% Hồi chiêu tất cả', rarity: '#95a5a6', f: h => { for(let s in h.skills) h.skills[s].max *= 0.9; h.specialMaxCD *= 0.9; } },
+    { n: 'Kho Dự Trữ', d: '+200 Mana tối đa (Hồi ngay)', rarity: '#3498db', f: h => { h.maxMana += 200; h.mana += 200; } }
+];
+
+function showUpgradeScreen() {
+    gameActive = false;
+    const screen = document.getElementById('upgrade-screen');
+    const list = document.getElementById('upgrade-list');
+    list.innerHTML = ''; screen.style.display = 'flex';
+    currentUpgradeChoices = [...UPGRADES].sort(() => 0.5 - Math.random()).slice(0, 3);
+    
+    currentUpgradeChoices.forEach((opt, index) => {
+        let div = document.createElement('div'); div.className = 'card';
+        div.style.borderColor = opt.rarity;
+        div.innerHTML = `
+            <div class="key-hint">${index + 1}</div>
+            <h2 style="color:${opt.rarity}">${opt.n}</h2>
+            <p>${opt.d}</p>
+        `;
+        div.onclick = () => selectUpgrade(index);
+        list.appendChild(div);
+    });
+}
+
+function selectUpgrade(index) {
+    const opt = currentUpgradeChoices[index];
+    if (opt) {
+        opt.f(hero);
+        document.getElementById('upgrade-screen').style.display = 'none';
+        gameActive = true;
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+function pickHero(type) {
+    selectedHeroType = type;
+    document.getElementById('hero-select').style.display = 'none';
+    document.getElementById('spell-select').style.display = 'flex';
+    document.getElementById('step-title').innerText = 'CHỌN PHỤ TRỢ';
+}
+
+function startGame(special) {
+    hero = new Hero(selectedHeroType, special);
+    document.getElementById('selection-screen').style.display = 'none';
+    document.getElementById('ui-layer').style.display = 'block';
+    gameActive = true; lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+}
+
+function gameLoop(timestamp) {
+    if(!gameActive || isPaused) return; 
+    const dt = Math.min((timestamp - lastTime)/1000, 0.1);
+    lastTime = timestamp;
+    gameTime += dt;
+    if(freezeTimer > 0) freezeTimer -= dt;
+
+    if (!bossInstance && (gameTime - lastBossDeathTime >= 60)) {
+        let isDragonRound = (bossLevel % 5 === 0);
+        let bossType = isDragonRound ? 'LIGHT_DRAGON' : 'BOSS';
+        
+        bossInstance = new Enemy(bossType); 
+        enemies.push(bossInstance);
+        
+        if (isDragonRound) {
+            spawnFloatingText("⚠️ LIGHT DRAGON HAS AWOKEN! ⚠️", hero.x, hero.y - 150, "#f1c40f");
+        } else {
+            spawnFloatingText("BOSS SPAWNED!", hero.x, hero.y - 100, "red");
+        }
+    }
+
+    let maxEnemies = Math.min(150, 30 + Math.floor(gameTime/2)); 
+    if(enemies.length < maxEnemies) {
+        let rand = Math.random();
+        let type = 'NORMAL';
+        if (rand < 0.01 && bossLevel > 5) type = 'SLIME_BIG';
+        else if(rand < 0.05) type = 'HEALER';
+        else if(rand < 0.12) type = 'FAST';        
+        else if(rand < 0.16 && gameTime > 20) type = 'TANK'; 
+        else if(rand < 0.18 && gameTime > 50) type = 'SUMMONER';
+        else if(rand < 0.22 && gameTime > 40) type = 'ARCHER';
+        else if(rand < 0.01 && bossLevel > 2) type = 'MAGE';
+        enemies.push(new Enemy(type));
+    }
+
+    if (Math.random() < 0.002 && gameTime > 30) {
+        let chests = objects.filter(o => o instanceof Chest).length;
+        if (chests < 2) objects.push(new Chest());
+    }
+
+    hero.update(dt);
+    camera.update(hero);
+    mouse.worldX = mouse.x + camera.x; mouse.worldY = mouse.y + camera.y;
+
+    [enemies, projectiles, objects, effects, pickups].forEach(list => {
+        for(let i=list.length-1; i>=0; i--) {
+            list[i].update(dt);
+            if(list[i].dead || (list[i].hp !== undefined && list[i].hp <= 0)) list.splice(i, 1);
+        }
+    });
+
+    ctx.fillStyle = '#111'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    
+    ctx.save(); ctx.translate(-camera.x, -camera.y);
+    
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 1; ctx.beginPath();
+    let gridSize = 100;
+    let startX = Math.floor(camera.x / gridSize) * gridSize;
+    let startY = Math.floor(camera.y / gridSize) * gridSize;
+    for(let x = startX; x < camera.x + canvas.width; x += gridSize) { ctx.moveTo(x, camera.y); ctx.lineTo(x, camera.y + canvas.height); }
+    for(let y = startY; y < camera.y + canvas.height; y += gridSize) { ctx.moveTo(camera.x, y); ctx.lineTo(camera.x + canvas.width, y); }
+    ctx.stroke();
+
+    ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 5; ctx.strokeRect(0,0, WORLD_WIDTH, WORLD_HEIGHT);
+
+    pickups.forEach(p => p.draw()); objects.forEach(o => o.draw());
+    enemies.forEach(e => e.draw()); hero.draw();
+    projectiles.forEach(p => p.draw()); effects.forEach(e => e.draw());
+    
+    ctx.restore();
+    requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('resize', () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+
+</script>
+</body>
+</html>

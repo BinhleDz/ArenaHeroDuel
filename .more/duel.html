@@ -1,0 +1,3764 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Element Duel - võ đài của GAY</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #111;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+        }
+        
+        #selection-screen {
+            position: absolute;
+            width: 950px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 4px solid #555;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            z-index: 10;
+        }
+        .settings-container {
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: inline-block;
+            border: 2px solid #aaa;
+        }
+        .settings-container label {
+            font-weight: bold;
+            font-size: 18px;
+            margin: 0 15px;
+        }
+        .settings-container input {
+            width: 70px;
+            font-size: 18px;
+            padding: 5px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 5px;
+            border: none;
+        }
+        .players-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+        }
+        .player-select {
+            background: #222;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #fff;
+            width: 48%;
+        }
+        .player-select h2 { margin-top: 0; }
+        
+        .skill-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .skill-grid::-webkit-scrollbar { width: 8px; }
+        .skill-grid::-webkit-scrollbar-track { background: #333; border-radius: 4px; }
+        .skill-grid::-webkit-scrollbar-thumb { background: #777; border-radius: 4px; }
+        .skill-grid::-webkit-scrollbar-thumb:hover { background: #999; }
+
+        .skill-btn {
+            display: block; width: 100%; 
+            padding: 15px 5px;
+            font-size: 15px;
+            font-weight: bold; cursor: pointer;
+            background-color: #444; color: white; border: none; border-radius: 5px;
+            transition: 0.2s;
+        }
+        .skill-btn:hover { background-color: #666; }
+        .selected-text { color: #ff0; font-weight: bold; font-size: 16px; margin-top: 15px; height: 20px;}
+        .instruction { font-size: 13px; color: #ccc; margin-top: 10px; margin-bottom: 15px; text-align: left; }
+        
+        #start-btn {
+            font-size: 24px; padding: 15px 40px; font-weight: bold;
+            background-color: #2e8b57; color: white; border: none; border-radius: 10px;
+            cursor: pointer; transition: 0.3s;
+        }
+        #start-btn:disabled { background-color: #555; cursor: not-allowed; }
+        #start-btn:not(:disabled):hover { background-color: #3cb371; transform: scale(1.05); }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: none;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            background-color: #222;
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .health-bar-container {
+            width: 30vw; height: 30px;
+            background-color: #444;
+            border: 3px solid #fff;
+            position: relative;
+        }
+        #p1-health { background-color: #ff4d4d; height: 100%; width: 100%; transition: width 0.1s; }
+        #p2-health { background-color: #4da6ff; height: 100%; width: 100%; transition: width 0.1s; float: right; }
+        .hp-text {
+            position: absolute; top: 0; width: 100%; text-align: center;
+            font-weight: bold; color: white; line-height: 30px; text-shadow: 1px 1px 2px black;
+        }
+        .skill-cooldown {
+            position: absolute; top: 40px; font-size: 16px; font-weight: bold; color: #ff0;
+            text-shadow: 1px 1px 2px black;
+        }
+        .dash-cooldown {
+            position: absolute; top: 60px; font-size: 14px; font-weight: bold; color: #fff;
+            text-shadow: 1px 1px 2px black;
+        }
+        #p1-cd, #p1-dash-cd { left: 0; }
+        #p2-cd, #p2-dash-cd { right: 0; text-align: right; }
+        #timer {
+            font-size: 40px; font-weight: bold;
+            background-color: rgba(0,0,0,0.6);
+            padding: 5px 20px; border-radius: 8px;
+            height: fit-content;
+        }
+        #game-over {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px; font-weight: bold;
+            text-align: center; display: none;
+            background: rgba(0,0,0,0.8); padding: 30px; border-radius: 15px;
+            border: 2px solid white; z-index: 20;
+            pointer-events: auto;
+        }
+        /* CODE THÊM MỚI: Style cho nút Random */
+        .player-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .player-header h2 { margin: 0; }
+        .random-btn {
+            background-color: #ff8c00;
+            color: white;
+            border: 1px solid white;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+            margin-left: 15px;
+            transition: 0.2s;
+        }
+        .random-btn:hover { background-color: #cc7000; transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+<div id="selection-screen">
+    <h1>CHỌN CÀI ĐẶT & KỸ NĂNG</h1>
+    
+    <div class="settings-container">
+        <label>Máu (HP): <input type="number" id="input-hp" value="200" min="10" max="1000"></label>
+        <label>Thời gian (s): <input type="number" id="input-time" value="1000" min="10" max="1000"></label>
+    </div>
+
+    <div class="players-container">
+        <div class="player-select" style="border-color: #ff4d4d;">
+            <div class="player-header">
+                <h2 style="color: #ff4d4d;">PLAYER 1</h2>
+                <button class="random-btn" onclick="randomSkill(1)">🎲 Random</button>
+            </div>
+            <div class="instruction">
+                Di chuyển: W A S D | Đỡ đòn: S<br>Đánh thường: F | Skill: G | Lướt: H
+            </div>
+            <div class="skill-grid">
+                <button class="skill-btn" onclick="selectSkill(1, 'fireball', 'Fireball')">Fireball</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'lightningDash', 'Lightning Dash')">Lightning Dash</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'waterShield', 'Water Shield')">Water Shield</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'earthSpike', 'Earth Spike')">Earth Spike</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'windBullets', 'Wind Bullets')">Wind Bullets</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'snowRolling', 'Snow Rolling')">Snow Rolling</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'bulletsBuff', 'Bullets Buff')">Bullets Buff</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'diamondMeteorite', 'Diamond Meteor')">Diamond Meteor</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'poisonBullets', 'Poison Bullets')">Poison Bullets</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'lightHole', 'Light Hole')">Light Hole</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'darkHole', 'Dark Hole')">Dark Hole</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'weight', 'Weight')">Increase Gravity</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'sound', 'Sound')">Maximum Sound</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'energy', 'Energy')">Energy Bullets</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'time', 'Time')">Time Freezes</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'space', 'Space')">Space Teleport</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'plasmaExplosion', 'Plasma Explode')">Plasma Explosion</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'chaosEnchain', 'Chaos Enchain')">Chaos Enchain</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'fireSoul', 'Fire Soul')">Fire Soul</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'scratchingBlood', 'Scratching Blood')">Scratching Blood</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'wings', 'Wings')">Wings</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'swordEnergy', 'Sword Energy')">Sword Energy</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'magicOrb', 'Magic Orb')">Magic Orb</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'bananaApprentice', 'Banana Apprentice')">Banana Apprentice</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'roastedCheese', 'Roasted Cheese')">Roasted Cheese</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'bubbleBall', 'Bubble Ball')">Bubble Ball</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'spit', 'Spit')">Spit</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'magneticAttraction', 'Magnet Attract')">Magnet Attract</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'plantingTrees', 'Planting Trees')">Planting Trees</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'chickenBodybuilder', 'Chicken Bodybuilder')">Chicken Bodybuilder</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'hollowPurple', 'Hư Thức Tử')">Hư Thức Tử</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'haiPhongCity', 'Hai Phong City')">Hai Phong City</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'boomerangSaw', 'Boomerang Saw')">Boomerang Saw</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'trample', 'Trample')">Trample</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'dragonBreath', 'Dragon Breath')">Dragon Breath</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'stiffLegs', 'Stiff Legs')">Stiff Legs</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'kamehameha', 'Kamehameha')">Kamehameha</button>
+                <button class="skill-btn" onclick="selectSkill(1, 'blackFlash', 'Hắc Thiểm')">Hắc Thiểm</button>
+            </div>
+            <div class="selected-text" id="p1-chosen">Chưa chọn</div>
+        </div>
+        <div class="player-select" style="border-color: #4da6ff;">
+            <div class="player-header">
+                <h2 style="color: #4da6ff;">PLAYER 2</h2>
+                <button class="random-btn" onclick="randomSkill(2)">🎲 Random</button>
+            </div>
+            <div class="instruction">
+                Di chuyển: Mũi tên | Đỡ đòn: Xuống<br>Đánh thường: L | Skill: K | Lướt: J
+            </div>
+            <div class="skill-grid">
+                <button class="skill-btn" onclick="selectSkill(2, 'fireball', 'Fireball')">Fireball</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'lightningDash', 'Lightning Dash')">Lightning Dash</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'waterShield', 'Water Shield')">Water Shield</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'earthSpike', 'Earth Spike')">Earth Spike</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'windBullets', 'Wind Bullets')">Wind Bullets</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'snowRolling', 'Snow Rolling')">Snow Rolling</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'bulletsBuff', 'Bullets Buff')">Bullets Buff</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'diamondMeteorite', 'Diamond Meteor')">Diamond Meteor</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'poisonBullets', 'Poison Bullets')">Poison Bullets</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'lightHole', 'Light Hole')">Light Hole</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'darkHole', 'Dark Hole')">Dark Hole</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'weight', 'Weight')">Increase Gravity</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'sound', 'Sound')">Sound</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'energy', 'Energy')">Energy Bullets</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'time', 'Time')">Time Freezes</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'space', 'Space')">Space Teleport</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'plasmaExplosion', 'Plasma Explode')">Plasma Explosion</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'chaosEnchain', 'Chaos Enchain')">Chaos Enchain</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'fireSoul', 'Fire Soul')">Fire Soul</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'scratchingBlood', 'Scratching Blood')">Scratching Blood</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'wings', 'Wings')">Wings</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'swordEnergy', 'Sword Energy')">Sword Energy</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'magicOrb', 'Magic Orb')">Magic Orb</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'bananaApprentice', 'Banana Apprentice')">Banana Apprentice</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'roastedCheese', 'Roasted Cheese')">Roasted Cheese</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'bubbleBall', 'Bubble Ball')">Bubble Ball</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'spit', 'Spit')">Spit</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'magneticAttraction', 'Magnet Attract')">Magnet Attract</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'plantingTrees', 'Planting Trees')">Planting Trees</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'chickenBodybuilder', 'Chicken Bodybuilder')">Chicken Bodybuilder</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'hollowPurple', 'Hư Thức Tử')">Hư Thức Tử</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'haiPhongCity', 'Hai Phong City')">Hai Phong City</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'boomerangSaw', 'Boomerang Saw')">Boomerang Saw</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'trample', 'Trample')">Trample</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'dragonBreath', 'Dragon Breath')">Dragon Breath</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'stiffLegs', 'Stiff Legs')">Stiff Legs</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'kamehameha', 'Kamehameha')">Kamehameha</button>
+                <button class="skill-btn" onclick="selectSkill(2, 'blackFlash', 'Hắc Thiểm')">Hắc Thiểm</button>
+            </div>
+            <div class="selected-text" id="p2-chosen">Chưa chọn</div>
+        </div>
+    </div>
+    <button id="start-btn" onclick="startGame()" disabled>VÀO TRẬN</button>
+</div>
+
+<div id="game-container">
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui-layer">
+        <div class="health-bar-container">
+            <div id="p1-health"></div>
+            <div id="p1-hp-text" class="hp-text">100/100</div>
+            <div id="p1-cd" class="skill-cooldown"></div>
+            <div id="p1-dash-cd" class="dash-cooldown"></div>
+        </div>
+        <div id="timer">60</div>
+        <div class="health-bar-container">
+            <div id="p2-health"></div>
+            <div id="p2-hp-text" class="hp-text">100/100</div>
+            <div id="p2-cd" class="skill-cooldown"></div>
+            <div id="p2-dash-cd" class="dash-cooldown"></div>
+        </div>
+    </div>
+    <div id="game-over">Player 1 Wins!</div>
+</div>
+
+<script>
+    // --- LÔGIC CHỌN KỸ NĂNG ---
+    let p1Skill = null;
+    let p2Skill = null;
+
+    function selectSkill(player, skillId, skillName) {
+        if (player === 1) {
+            p1Skill = skillId;
+            document.getElementById('p1-chosen').innerText = "Đã chọn: " + skillName;
+        } else {
+            p2Skill = skillId;
+            document.getElementById('p2-chosen').innerText = "Đã chọn: " + skillName;
+        }
+        if (p1Skill && p2Skill) {
+            document.getElementById('start-btn').disabled = false;
+        }
+    }
+
+    // --- LÔGIC RANDOM KỸ NĂNG ---
+    const allSkillsList = [
+        {id: 'fireball', name: 'Fireball'}, {id: 'lightningDash', name: 'Lightning Dash'},
+        {id: 'waterShield', name: 'Water Shield'}, {id: 'earthSpike', name: 'Earth Spike'},
+        {id: 'windBullets', name: 'Wind Bullets'}, {id: 'snowRolling', name: 'Snow Rolling'},
+        {id: 'bulletsBuff', name: 'Bullets Buff'}, {id: 'diamondMeteorite', name: 'Diamond Meteor'},
+        {id: 'poisonBullets', name: 'Poison Bullets'}, {id: 'lightHole', name: 'Light Hole'},
+        {id: 'darkHole', name: 'Dark Hole'}, {id: 'weight', name: 'Increase Gravity'},
+        {id: 'sound', name: 'Maximum Sound'}, {id: 'energy', name: 'Energy Bullets'},
+        {id: 'time', name: 'Time Freezes'}, {id: 'space', name: 'Space Teleport'},
+        {id: 'plasmaExplosion', name: 'Plasma Explode'}, {id: 'chaosEnchain', name: 'Chaos Enchain'},
+        {id: 'fireSoul', name: 'Fire Soul'}, {id: 'scratchingBlood', name: 'Scratching Blood'},
+        {id: 'wings', name: 'Wings'}, {id: 'swordEnergy', name: 'Sword Energy'},
+        {id: 'magicOrb', name: 'Magic Orb'}, {id: 'bananaApprentice', name: 'Banana Apprentice'},
+        {id: 'roastedCheese', name: 'Roasted Cheese'}, {id: 'bubbleBall', name: 'Bubble Ball'},
+        {id: 'spit', name: 'Spit'}, {id: 'magneticAttraction', name: 'Magnet Attract'},
+        {id: 'plantingTrees', name: 'Planting Trees'}, {id: 'chickenBodybuilder', name: 'Chicken Bodybuilder'},
+        {id: 'hollowPurple', name: 'Hư Thức Tử'}, {id: 'haiPhongCity', name: 'Hai Phong City'},
+        {id: 'boomerangSaw', name: 'Boomerang Saw'}, {id: 'trample', name: 'Trample'},
+        {id: 'dragonBreath', name: 'Dragon Breath'}, {id: 'stiffLegs', name: 'Stiff Legs'},{id: 'kamehameha', name: 'Kamehameha'},
+        {id: 'blackFlash', name: 'Hắc Thiểm' } ,
+    ];
+
+    function randomSkill(playerNum) {
+        const randomIndex = Math.floor(Math.random() * allSkillsList.length);
+        const chosen = allSkillsList[randomIndex];
+        selectSkill(playerNum, chosen.id, chosen.name);
+    }
+
+    // --- LÔGIC TRÒ CHƠI ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const groundHeight = 50;
+    const gravity = 0.5;
+    
+    let player1, player2;
+    let projectiles = [];
+    let minions = []; 
+    let plants = []; 
+    let suns = [];   
+    let timer = 60;
+    let gameActive = false;
+    let timerInterval;
+    let platforms = [];
+
+    const keys = {
+        a: false, d: false, w: false, s: false, f: false, g: false, h: false,
+        ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false, l: false, k: false, j: false
+    };
+
+    window.addEventListener('keydown', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = true; });
+    window.addEventListener('keyup', e => { if(keys.hasOwnProperty(e.key)) keys[e.key] = false; });
+
+    class Player {
+        constructor(x, y, color, controls, facingRight, skillType, maxHp) {
+            this.x = x; this.y = y;
+            this.width = 16; this.height = 32; 
+            this.color = color;
+            this.vx = 0; this.vy = 0;
+            this.speed = 5.5; 
+            this.jumpPower = -9.5;
+            this.maxHp = maxHp;
+            this.hp = maxHp;
+            this.controls = controls;
+            this.facingRight = facingRight;
+            this.isDead = false;
+            this.mentalDamage = false; 
+            this.isBlocking = false;
+            this.onGround = false;
+            
+            this.attackCooldown = 0;
+            this.skillCooldown = 0;
+            this.baseDashCooldown = 0;
+            
+            this.skillType = skillType; 
+            
+            this.isDashing = false;
+            this.dashTimer = 0;
+            this.hasHitWithDash = false; 
+
+            this.isBlackFlashing = false;
+            
+            this.isBaseDashing = false;
+            this.baseDashTimer = 0;
+
+            this.waterShieldTimer = 0;
+
+            this.jumpCount = 0;
+            this.maxJumps = 2;
+            this.prevUpKey = false;
+
+            this.isChanneling = false;
+            this.channelTimer = 0;
+            this.channelMax = 0;
+
+            this.poisonTimer = 0;
+            this.inLightHole = false;
+            this.inDarkHole = false;
+            this.cantJumpTimer = 0; 
+            this.frozenTimer = 0; 
+            this.spaceBuffCount = 0; 
+            this.plasmaChargeTimer = 0; 
+            this.plasmaMark = null; 
+
+            this.chainedTimer = 0;
+            this.chainCenter = null;
+            this.fireSoulTimer = 0;
+            this.fireSoulBurnTimer = 0;
+            this.scratchingBloodTick = 0;
+
+            this.flightPoints = 10;
+            this.isFlying = false;
+            this.flightTick = 0;
+            this.groundRegenTick = 0;
+
+            this.activeOrb = null;
+
+            this.spitCount = 0;
+            this.bubbledTimer = 0;
+            this.magnetizedTimer = 0;
+            this.magnetPullTimer = 0; 
+            this.magnetSource = null;
+
+            this.magnetSource = null;
+            this.isKamehamehaing = false; // Check xem có đang bắn Kamehameha không
+        }
+
+        getChannelTime(skillType) {
+            switch(skillType) { 
+                case 'earthSpike': return 5; 
+                case 'snowRolling': return 7; 
+                case 'sound': return 35; 
+                case 'hollowPurple': return 150;
+                case 'haiPhongCity': return 15;
+                case 'kamehameha': return 75;
+                default: return 0; 
+            }
+        }
+
+        triggerCombo() {
+            this.attackCooldown = Math.min(this.attackCooldown, 15);
+        }
+
+        update() {
+            if (this.isDead) return;
+
+            if (this.frozenTimer > 0) {
+                this.frozenTimer--;
+                this.vx = 0; 
+                this.vy = 0; 
+                return; 
+            }
+
+            if (this.attackCooldown > 0) this.attackCooldown--;
+            if (this.skillCooldown > 0) this.skillCooldown--;
+            if (this.baseDashCooldown > 0) this.baseDashCooldown--;
+            if (this.waterShieldTimer > 0) this.waterShieldTimer--;
+            if (this.cantJumpTimer > 0) this.cantJumpTimer--;
+
+            if (this.bubbledTimer > 0) {
+                this.bubbledTimer--;
+                if (this.bubbledTimer <= 0) {
+                    this.takeDamage(17);
+                }
+            }
+            if (this.magnetizedTimer > 0) {
+                this.magnetizedTimer--; 
+            }
+            if (this.magnetPullTimer > 0) {
+                this.magnetPullTimer--; 
+            }
+
+            if (this.skillType === 'wings') {
+                if (this.isFlying) {
+                    this.flightTick++;
+                    if (this.flightTick >= 60) {
+                        this.flightPoints--;
+                        this.flightTick = 0;
+                        if (this.flightPoints <= 0) this.isFlying = false;
+                    }
+                }
+            }
+
+            if (this.skillType === 'scratchingBlood') {
+                this.scratchingBloodTick++;
+                if (this.scratchingBloodTick >= 300) {
+                    this.hp -= 4;
+                    if (this.hp <= 0) this.isDead = true;
+                    this.scratchingBloodTick = 0;
+                }
+            }
+
+            if (this.fireSoulBurnTimer > 0) {
+                this.fireSoulBurnTimer--;
+                if (this.fireSoulBurnTimer % 12 === 0) {
+                    this.hp -= 1;
+                    if (this.hp <= 0) this.isDead = true;
+                }
+            }
+
+            let currentSpeedMult = 1;
+            let currentJumpMult = 1;
+            let currentGravityMult = 1;
+            let canDash = true;
+            let canSkill = true;
+            let canAttack = true;
+
+            if (this.isKamehamehaing) {
+                canDash = false;
+                canSkill = false;
+                canAttack = false;
+            }
+
+            if (this.fireSoulTimer > 0) {
+                this.fireSoulTimer--;
+                currentSpeedMult *= 1.5;
+            }
+
+            if (this.inDarkHole) {
+                currentSpeedMult *= 0.25;
+                currentJumpMult *= 0.25;
+                currentGravityMult *= 0.25;
+                canDash = false;
+                canSkill = false;
+            } else if (this.inLightHole) {
+                currentSpeedMult *= 0.5;
+                currentJumpMult *= 0.5;
+                currentGravityMult *= 0.5;
+                canDash = false;
+            }
+
+            if (this.plasmaChargeTimer > 0) {
+                this.plasmaChargeTimer--;
+                currentSpeedMult *= 1.5; 
+                canAttack = false;
+                canSkill = false;
+                if (this.plasmaChargeTimer <= 0) {
+                    projectiles.push(new PlasmaBomb(this.x + this.width/2, this.y - 40, this.plasmaMark.x, this.plasmaMark.y, this));
+                }
+            }
+
+            this.inDarkHole = false;
+            this.inLightHole = false;
+
+            if (this.poisonTimer > 0) {
+                this.poisonTimer--;
+                if (this.poisonTimer % 60 === 0) { 
+                    this.takeDamage(1);
+                }
+            }
+
+            this.isBlocking = keys[this.controls.block] && !this.isChanneling && !this.plasmaChargeTimer && this.bubbledTimer <= 0 && this.magnetPullTimer <= 0;
+
+            if (this.isChanneling) {
+                this.channelTimer--;
+                this.vx = 0; 
+                if (this.skillType === 'sound') this.vy = 0; 
+                if (this.channelTimer <= 0) {
+                    this.isChanneling = false;
+                    this.useSkill();
+                }
+            } 
+            else if (this.isBlocking) {
+                this.vx = 0; 
+            } 
+            else if (!this.isDashing && !this.isBaseDashing) {
+                
+                if (this.bubbledTimer > 0) {
+                    this.vx = 0; 
+                } else if (this.magnetPullTimer > 0 && this.magnetSource) {
+                    let dx = this.magnetSource.x + this.magnetSource.width/2 - (this.x + this.width/2);
+                    let dy = this.magnetSource.y + this.magnetSource.height/2 - (this.y + this.height/2);
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 30) {
+                        this.vx = (dx / dist) * 40; 
+                    } else {
+                        this.vx = 0;
+                    }
+                } else {
+                    if (keys[this.controls.left]) { this.vx = -this.speed * currentSpeedMult; this.facingRight = false; }
+                    else if (keys[this.controls.right]) { this.vx = this.speed * currentSpeedMult; this.facingRight = true; }
+                    else { this.vx = 0; }
+                }
+
+                if (keys[this.controls.attack] && this.attackCooldown <= 0 && canAttack) {
+                    let isPoison = (this.skillType === 'poisonBullets');
+                    let attackDamage = (this.skillType === 'bulletsBuff') ? 8 : 6;
+                    
+                    if (this.spaceBuffCount > 0) {
+                        attackDamage *= 2;
+                        this.spaceBuffCount--;
+                    }
+
+                    if (this.spitCount > 0) {
+                        let proj = new Projectile(
+                            this.facingRight ? this.x + this.width : this.x - 20, 
+                            this.y + 15, 
+                            this.facingRight ? 36 : -36,
+                            '#32cd32', this, attackDamage + 4, 15, 10
+                        );
+                        projectiles.push(proj);
+                        this.spitCount--;
+                    } else if (this.skillType === 'stiffLegs') {
+                        let proj = new StiffLegKick(
+                            this.facingRight ? this.x + this.width : this.x - 130,
+                            this.y,
+                            this.facingRight,
+                            this
+                        );
+                        // Kế thừa hiệu ứng x2 sát thương của Space Teleport (nếu có)
+                        proj.damage = (attackDamage > 7) ? 16 : 8; 
+                        projectiles.push(proj);
+                    } else if (this.skillType === 'swordEnergy') {
+                        let proj = new MeleeArcProjectile(
+                            this.facingRight ? this.x + this.width : this.x - 100,
+                            this.y - 25,
+                            this.facingRight,
+                            this
+                        );
+                        proj.damage = attackDamage;
+                        projectiles.push(proj);
+                    } else if (this.skillType === 'wings' && this.isFlying) {
+                        let opponent = (this === player1) ? player2 : player1;
+                        let myCenter = { x: this.x + this.width/2, y: this.y + this.height/2 };
+                        let oppCenter = { x: opponent.x + opponent.width/2, y: opponent.y + opponent.height/2 };
+                        let angle = Math.atan2(oppCenter.y - myCenter.y, oppCenter.x - myCenter.x);
+                        
+                        let proj = new DirectedProjectile(
+                            myCenter.x, myCenter.y,
+                            Math.cos(angle) * 15, Math.sin(angle) * 15,
+                            this.color, this, attackDamage, 20, 10
+                        );
+                        projectiles.push(proj);
+                    } else if (this.skillType === 'roastedCheese') {
+                        let proj = new CheeseProjectile(
+                            this.facingRight ? this.x + this.width : this.x - 20, 
+                            this.y + 15, 
+                            this.facingRight ? 12 : -12, 
+                            this
+                        );
+                        projectiles.push(proj);
+                    } else if (this.skillType === 'energy') {
+                        let proj = new EnergyProjectile(
+                            this.facingRight ? this.x + this.width : this.x - 20, 
+                            this.y + 15, 
+                            this.facingRight ? 12 : -12, 
+                            '#00ffff', this, attackDamage, 20, 10
+                        );
+                        projectiles.push(proj);
+                    } else if (this.skillType === 'blackFlash') {
+                        let proj = new MeleePunchHitbox(
+                            this.facingRight ? this.x + this.width : this.x - 40,
+                            this.y,
+                            this.facingRight,
+                            this
+                        );
+                        proj.damage = attackDamage;
+                        projectiles.push(proj);
+                    } else {
+                        let bulletColor = (this.skillType === 'bulletsBuff') ? '#ffdd00' : (isPoison ? '#8a2be2' : this.color);
+                        let proj = new Projectile(
+                            this.facingRight ? this.x + this.width : this.x - 20, 
+                            this.y + 15, 
+                            this.facingRight ? 12 : -12, 
+                            bulletColor, this, attackDamage, 20, 10
+                        );
+                        if (isPoison) proj.isPoison = true; 
+                        projectiles.push(proj);
+                    }
+                    this.attackCooldown = 35;
+                }
+
+                if (keys[this.controls.skill] && this.skillCooldown <= 0 && canSkill && this.skillType !== 'energy' && this.skillType !== 'wings') {
+                    let cTime = this.getChannelTime(this.skillType);
+                    if (cTime > 0) {
+                        this.isChanneling = true;
+                        this.channelMax = cTime;
+                        this.channelTimer = cTime;
+                    } else {
+                        this.useSkill();
+                    }
+                }
+                
+                if (keys[this.controls.baseDash] && this.baseDashCooldown <= 0 && canDash && this.bubbledTimer <= 0 && this.magnetPullTimer <= 0) {
+                    this.isBaseDashing = true;
+                    this.baseDashTimer = 8;
+                    this.vx = this.facingRight ? 20 : -20;
+                    this.baseDashCooldown = (this.skillType === 'stiffLegs') ? 15 : 120; // 15 frames = 0.25s
+                    this.triggerCombo();
+                }
+            }
+            
+            if (this.isDashing) {
+                this.dashTimer--;
+                this.vy = 0; 
+                if (this.dashTimer <= 0) {
+                    this.isDashing = false;
+                    this.hasHitWithDash = false;
+                }
+            } 
+            else if (this.isBaseDashing) {
+                this.baseDashTimer--;
+                this.vy = 0;
+                if (this.baseDashTimer <= 0) {
+                    this.isBaseDashing = false;
+                }
+            } 
+            else {
+                if (this.bubbledTimer > 0) {
+                    if (this.y > 0) this.vy = -1.5; 
+                    else this.vy = 0; 
+                } 
+                else if (this.magnetPullTimer > 0 && this.magnetSource) {
+                    let dx = this.magnetSource.x + this.magnetSource.width/2 - (this.x + this.width/2);
+                    let dy = this.magnetSource.y + this.magnetSource.height/2 - (this.y + this.height/2);
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist > 30) {
+                        this.vy = (dy / dist) * 40; 
+                    } else {
+                        this.vy = 0;
+                    }
+                }
+                else if (this.fireSoulTimer > 0 || this.isFlying) {
+                    this.vy = 0;
+                    if (keys[this.controls.up]) this.vy = -this.speed * currentSpeedMult;
+                    else if (keys[this.controls.down]) this.vy = this.speed * currentSpeedMult;
+                } else if (!(this.isChanneling && (this.skillType === 'sound' || this.skillType === 'kamehameha')) && !this.isKamehamehaing) {
+                this.vy += gravity * currentGravityMult; 
+                }
+            }
+
+            this.x += this.vx;
+            this.y += this.vy;
+
+            if (this.chainedTimer > 0 && this.chainCenter) {
+                this.chainedTimer--;
+                let dx = (this.x + this.width/2) - this.chainCenter.x;
+                let dy = (this.y + this.height/2) - this.chainCenter.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist > 150) {
+                    let angle = Math.atan2(dy, dx);
+                    this.x = this.chainCenter.x + Math.cos(angle) * 150 - this.width/2;
+                    this.y = this.chainCenter.y + Math.sin(angle) * 150 - this.height/2;
+                }
+            }
+
+            this.onGround = false;
+            
+            if (this.y + this.height >= canvas.height - groundHeight) {
+                this.y = canvas.height - groundHeight - this.height;
+                if (this.fireSoulTimer <= 0 && !this.isFlying && this.bubbledTimer <= 0 && this.magnetPullTimer <= 0) this.vy = 0;
+                this.onGround = true;
+            }
+
+            for (let plat of platforms) {
+                if (this.vy > 0 && 
+                    this.y + this.height - this.vy <= plat.y && 
+                    this.x + this.width > plat.x && 
+                    this.x < plat.x + plat.w && 
+                    this.y + this.height >= plat.y) {
+                    
+                    this.y = plat.y - this.height;
+                    if(this.bubbledTimer <= 0 && this.magnetPullTimer <= 0) this.vy = 0;
+                    this.onGround = true;
+                }
+            }
+
+            if (this.onGround) {
+                this.jumpCount = 0;
+                this.isFlying = false;
+                
+                if (this.skillType === 'wings') {
+                    if (this.flightPoints < 10) {
+                        this.groundRegenTick++;
+                        if (this.groundRegenTick >= 120) {
+                            this.flightPoints = Math.min(10, this.flightPoints + 3);
+                            this.groundRegenTick = 0;
+                        }
+                    }
+                }
+            } else {
+                this.groundRegenTick = 0;
+            }
+
+            let upPressed = keys[this.controls.up];
+            if (upPressed && !this.prevUpKey && !this.isBlocking && !this.isDashing && !this.isBaseDashing && !this.isChanneling && this.cantJumpTimer <= 0 && this.fireSoulTimer <= 0 && this.bubbledTimer <= 0 && this.magnetPullTimer <= 0) {
+                if (this.skillType === 'wings' && this.jumpCount >= 1 && this.flightPoints > 0 && !this.isFlying) {
+                    this.isFlying = true;
+                    this.vy = 0;
+                } else if (this.jumpCount < this.maxJumps) {
+                    this.vy = this.jumpPower * currentJumpMult; 
+                    this.jumpCount++;
+                    this.onGround = false;
+                }
+            }
+            this.prevUpKey = upPressed;
+
+            if (this.x < 0) this.x = 0;
+            if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+        }
+
+        useSkill() {
+            let opponent = (this === player1) ? player2 : player1;
+
+            if (this.skillType === 'fireball') {
+                this.skillCooldown = 240; 
+                projectiles.push(new Projectile(
+                    this.facingRight ? this.x + this.width : this.x - 30, 
+                    this.y + 5, 
+                    this.facingRight ? 10 : -10, 
+                    '#ff9900', this, 25, 40, 30 
+                ));
+            } 
+            else if (this.skillType === 'lightningDash') {
+                this.skillCooldown = 180;
+                this.isDashing = true;
+                this.dashTimer = 15;
+                this.vx = this.facingRight ? 30 : -30;
+            }
+            else if (this.skillType === 'waterShield') {
+                this.skillCooldown = 400;
+                this.waterShieldTimer = 180; 
+            }
+            else if (this.skillType === 'earthSpike') {
+                this.skillCooldown = 180;
+                projectiles.push(new EarthSpikeProjectile(
+                    opponent.x + opponent.width/2 - 30, 
+                    canvas.height - groundHeight, 
+                    this
+                ));
+            }
+            else if (this.skillType === 'windBullets') {
+                this.skillCooldown = 240;
+                this.isDashing = true;
+                this.dashTimer = 6; 
+                this.vx = this.facingRight ? 20 : -20;
+                projectiles.push(new WindProjectile(
+                    this.facingRight ? this.x + this.width : this.x - 30, 
+                    this.y + 10, 
+                    this.facingRight ? 16 : -16, 
+                    this
+                ));
+            }
+            else if (this.skillType === 'snowRolling') {
+                this.skillCooldown = 300;
+                projectiles.push(new SnowballProjectile(
+                    this.facingRight ? this.x + this.width + 5 : this.x - 20,
+                    this.y + this.height - 15,
+                    this.facingRight ? 6 : -6,
+                    this
+                ));
+            }
+            else if (this.skillType === 'bulletsBuff') {
+                this.skillCooldown = 30; 
+            }
+            else if (this.skillType === 'diamondMeteorite') {
+                this.skillCooldown = 400; 
+                for(let i=0; i<10; i++) {
+                    let randomX = Math.random() * (canvas.width - 40);
+                    projectiles.push(new DiamondProjectile(randomX, -100 - (i*80), this));
+                }
+            }
+            else if (this.skillType === 'poisonBullets') {
+                this.skillCooldown = 30; 
+            }
+            else if (this.skillType === 'lightHole') {
+                this.skillCooldown = 300; 
+                projectiles.push(new LightBulletProjectile(
+                    this.facingRight ? this.x + this.width : this.x - 20, 
+                    this.y + 15, 
+                    this.facingRight ? 15 : -15, 
+                    this
+                ));
+            }
+            else if (this.skillType === 'darkHole') {
+                this.skillCooldown = 360; 
+                projectiles.push(new DarkBulletProjectile(
+                    this.facingRight ? this.x + this.width : this.x - 20, 
+                    this.y + 15, 
+                    this.facingRight ? 15 : -15, 
+                    this
+                ));
+            }
+            else if (this.skillType === 'weight') {
+                this.skillCooldown = 300; 
+                opponent.cantJumpTimer = 180;
+                if (!opponent.onGround) {
+                    opponent.takeDamage(10);
+                    opponent.y = canvas.height - groundHeight - opponent.height;
+                    opponent.vy = 0;
+                    opponent.onGround = true;
+                }
+            }
+            else if (this.skillType === 'sound') {
+                this.skillCooldown = 300; 
+                let dx = opponent.x + opponent.width/2 - (this.x + this.width/2);
+                let dy = opponent.y + opponent.height/2 - (this.y + this.height/2);
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 450) {
+                    let dmg = Math.max(0, 45 * (1 - dist/450));
+                    opponent.takeDamage(dmg);
+                }
+                projectiles.push(new SoundVisual(this.x + this.width/2, this.y + this.height/2));
+            }
+            else if (this.skillType === 'time') {
+                this.skillCooldown = 300; 
+                opponent.frozenTimer = 150;
+                projectiles.forEach(p => {
+                    if (p.owner === opponent) p.frozenTimer = 150;
+                });
+                minions.forEach(m => {
+                    if (m.owner === opponent) m.frozenTimer = 150;
+                });
+                plants.forEach(pl => {
+                    if (pl.owner === opponent) pl.frozenTimer = 150;
+                });
+                this.hp = Math.min(this.maxHp, this.hp + 15);
+            }
+            else if (this.skillType === 'space') {
+                this.skillCooldown = 480; 
+                let tx = this.x, ty = this.y;
+                this.x = opponent.x; this.y = opponent.y;
+                opponent.x = tx; opponent.y = ty;
+                this.spaceBuffCount = 3;
+            }
+            else if (this.skillType === 'plasmaExplosion') {
+                this.skillCooldown = 600; 
+                this.plasmaMark = { x: opponent.x + opponent.width/2, y: opponent.y + opponent.height/2 };
+                this.plasmaChargeTimer = 135; 
+            }
+            else if (this.skillType === 'chaosEnchain') {
+                this.skillCooldown = 420; 
+                projectiles.push(new ChaosOrbProjectile(
+                    this.facingRight ? this.x + this.width : this.x - 25, 
+                    this.y + 10, 
+                    this.facingRight ? 12 : -12, 
+                    this
+                ));
+            }
+            else if (this.skillType === 'fireSoul') {
+                this.skillCooldown = 600; 
+                this.fireSoulTimer = 180; 
+            }
+            else if (this.skillType === 'scratchingBlood') {
+                this.skillCooldown = 480; 
+                projectiles.push(new BloodSlash(
+                    this.facingRight ? this.x + this.width : this.x - 250, 
+                    this.y - 25, 
+                    this.facingRight, 
+                    this
+                ));
+            }
+            
+
+            else if (this.skillType === 'swordEnergy') {
+                this.skillCooldown = 420; 
+                this.isDashing = true;
+                this.dashTimer = 16; 
+                this.vx = this.facingRight ? 20 : -20;
+                
+                projectiles.push(new SwordWaveProjectile(
+                    this.facingRight ? this.x + this.width : this.x - 60,
+                    this.y - 35,
+                    this.facingRight,
+                    this
+                ));
+            }
+            else if (this.skillType === 'magicOrb') {
+                if (this.activeOrb && this.activeOrb.active && !this.activeOrb.isExploding) {
+                    this.activeOrb.detonate();
+                    this.activeOrb = null;
+                    this.skillCooldown = 360; 
+                } else {
+                    this.activeOrb = new MagicOrbProjectile(
+                        this.facingRight ? this.x + this.width : this.x - 20, 
+                        this.y + 15, 
+                        this.facingRight ? 12 : -12, 
+                        this
+                    );
+                    projectiles.push(this.activeOrb);
+                    this.skillCooldown = 15; 
+                }
+            }
+            else if (this.skillType === 'bananaApprentice') {
+                this.skillCooldown = 480; 
+                minions.push(new BananaMinion(
+                    this.facingRight ? this.x + this.width + 10 : this.x - 30, 
+                    this.y - 10, 
+                    this, 
+                    this.facingRight
+                ));
+            }
+            else if (this.skillType === 'bubbleBall') {
+                this.skillCooldown = 300; 
+                projectiles.push(new BubbleProjectile(
+                    this.facingRight ? this.x + this.width : this.x - 30, 
+                    this.y + 5, 
+                    this.facingRight ? 10 : -10, 
+                    this
+                ));
+            }
+            else if (this.skillType === 'spit') {
+                this.skillCooldown = 420; 
+                this.spitCount = 3; 
+            }
+            else if (this.skillType === 'magneticAttraction') {
+                this.skillCooldown = 480; 
+                opponent.magnetizedTimer = 150; 
+                opponent.magnetPullTimer = 15;  
+                opponent.magnetSource = this;
+            }
+            else if (this.skillType === 'plantingTrees') {
+                this.skillCooldown = 480; //480
+                let types = ['sunflower', 'peashooter', 'wallnut'];
+                let chosenType = types[Math.floor(Math.random() * types.length)];
+                plants.push(new Plant(this.x, this.y, this, chosenType, this.facingRight));
+            } 
+            else if (this.skillType === 'chickenBodybuilder') {
+                this.skillCooldown = 540; // Cooldown 9 giây
+                minions.push(new ChickenMinion(
+                    this.facingRight ? this.x + this.width + 10 : this.x - 50, 
+                    this.y - 60, 
+                    this, 
+                    this.facingRight
+                ));
+            }
+            else if (this.skillType === 'hollowPurple') {
+                this.skillCooldown = 720; // Hồi chiêu 12 giây
+                projectiles.push(new HollowPurpleProjectile(
+                    this.facingRight ? this.x + this.width : this.x - 300, 
+                    this.y + this.height/2 - 150, // Căn giữa hitbox
+                    this.facingRight ? 20 : -20, // Tốc độ bay
+                    this
+                ));
+            } else if (this.skillType === 'haiPhongCity') {
+                this.skillCooldown = 420; // Hồi chiêu 7 giây
+                // Gọi bộ xả đạn
+                projectiles.push(new HaiPhongCitySpawner(this.x, this.y, this));
+            } else if (this.skillType === 'boomerangSaw') {
+                this.skillCooldown = 600; // Hồi chiêu 10 giây (60*10)
+                projectiles.push(new BoomerangSawProjectile(this));
+            } else if (this.skillType === 'trample') {
+                this.skillCooldown = 360; // Hồi chiêu 6 giây
+                let opponent = (this === player1) ? player2 : player1;
+                // Lấy vị trí x của địch ngay lúc vận chiêu xong
+                let footW = 120; // Chiều rộng bàn chân
+                let targetX = opponent.x + opponent.width/2 - footW/2;
+                projectiles.push(new TrampleFoot(targetX, this));
+            } else if (this.skillType === 'dragonBreath') {
+                this.skillCooldown = 720; // Hồi chiêu 12 giây
+                projectiles.push(new EnderDragonSkill(this));
+            } else if (this.skillType === 'kamehameha') {
+                this.skillCooldown = 720; // Hồi chiêu 12s
+                this.isKamehamehaing = true;
+                projectiles.push(new KamehamehaBeam(this));
+            } else if (this.skillType === 'blackFlash') {
+                this.skillCooldown = 300; // Hồi chiêu 5 giây
+                this.isDashing = true; 
+                this.isBlackFlashing = true; 
+                this.dashTimer = 15; // Thời gian lướt dài = 2 lướt
+                this.vx = this.facingRight ? 25 : -25; // Tốc độ siêu nhanh
+                
+                // Ném hitbox đuổi theo người chơi
+                projectiles.push(new BlackFlashDashHitbox(this));
+            }
+            
+            this.triggerCombo();
+        }
+
+        draw() {
+            if (this.chainedTimer > 0 && this.chainCenter) {
+                ctx.strokeStyle = 'rgba(255, 0, 127, 0.6)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.chainCenter.x, this.chainCenter.y, 150, 0, Math.PI*2);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(this.chainCenter.x, this.chainCenter.y);
+                ctx.lineTo(this.x + this.width/2, this.y + this.height/2);
+                ctx.stroke();
+            }
+
+            if (this.waterShieldTimer > 0) {
+                ctx.fillStyle = 'rgba(0, 255, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height/2, 35, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (this.bubbledTimer > 0) {
+                ctx.fillStyle = 'rgba(173, 216, 230, 0.4)';
+                ctx.strokeStyle = 'rgba(173, 216, 230, 0.9)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height/2, 35, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            if (this.fireSoulTimer > 0) {
+                ctx.fillStyle = (Math.floor(Date.now() / 100) % 2 === 0) ? '#ff4500' : '#ffa500';
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = '#ff4500';
+            } else if (this.frozenTimer > 0) {
+                ctx.fillStyle = '#0055aa';
+            } else {
+                ctx.fillStyle = this.color;
+            }
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0; 
+            
+            ctx.fillStyle = 'white';
+            let eyeX = this.facingRight ? this.x + 8 : this.x + 2;
+            ctx.fillRect(eyeX, this.y + 6, 6, 6);
+
+            if (this.magnetizedTimer > 0) {
+                ctx.strokeStyle = (Math.floor(Date.now() / 100) % 2 === 0) ? 'rgba(200, 0, 255, 0.9)' : 'rgba(100, 0, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height/2, 25, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            if (this.skillType === 'wings') {
+                ctx.fillStyle = '#00ffff';
+                ctx.font = '12px Courier New';
+                ctx.fillText(`FP: ${this.flightPoints}`, this.x - 10, this.y - 10);
+            }
+
+            if (this.isBlocking) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(this.x - 4, this.y - 4, this.width + 8, this.height + 8);
+            }
+
+            if (this.isDashing || this.isBaseDashing) {
+                ctx.fillStyle = this.isDashing ? 'rgba(255, 255, 0, 0.5)' : 'rgba(255, 255, 255, 0.4)';
+                if (this.skillType === 'windBullets' && this.isDashing) ctx.fillStyle = 'rgba(150, 255, 150, 0.5)';
+                if (this.isBlackFlashing) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+                    // Vẽ bóng thứ 2 tạo cảm giác Double Dash
+                    ctx.fillRect(this.x - this.vx * 1.5, this.y, this.width, this.height);
+                }
+                ctx.fillRect(this.x - this.vx, this.y, this.width, this.height);
+            }
+
+            if (this.isChanneling) {
+                let barW = 30; let barH = 5;
+                let barX = this.x + (this.width / 2) - (barW / 2); let barY = this.y - 12;
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(barX, barY, barW, barH);
+                let progress = 1 - (this.channelTimer / this.channelMax);
+                ctx.fillStyle = '#00bfff';
+                ctx.fillRect(barX, barY, barW * progress, barH);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+                ctx.strokeRect(barX, barY, barW, barH);
+            }
+            // Hiệu ứng vận chiêu Hư Thức Tử
+            // Hiệu ứng vận chiêu Hư Thức Tử
+            if (this.isChanneling && this.skillType === 'hollowPurple') {
+                let progress = 1 - (this.channelTimer / this.channelMax); // Từ 0 đến 1
+                let dir = this.facingRight ? -1 : 1; 
+                let mergeX = this.x + this.width/2 + (dir * 60); // Vị trí tụ chưởng sau lưng
+                let mergeY = this.y - 10;
+                let distance = 60 * (1 - progress); // 2 quả cầu bay dần vào nhau
+                
+                // 1. HIỆU ỨNG HÚT MÀN HÌNH VÀ MAP TÍM LẠI
+                ctx.save();
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset góc nhìn ra toàn màn hình
+                
+                // Phủ map màu tím dần dần
+                ctx.fillStyle = `rgba(75, 0, 130, ${progress * 0.4})`; // Tím trong suốt
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // 2. VẼ ẢNH GOJO CARTON CUT-IN Ở GÓC (Khung tam giác)
+                let cornerX = this === player1 ? 20 : canvas.width - 220; // Player 1 góc trái, 2 góc phải
+                let cornerY = 20;
+                
+                ctx.translate(cornerX, cornerY);
+                if (progress > 0.05) { // Bắt đầu hiện ra
+                    // Vẽ khung tam giác
+                    ctx.beginPath();
+                    ctx.moveTo(100, 0);
+                    ctx.lineTo(200, 150);
+                    ctx.lineTo(0, 150);
+                    ctx.closePath();
+                    
+                    // Nền khung tam giác
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                    ctx.fill();
+                    ctx.lineWidth = 4;
+                    ctx.strokeStyle = '#fff';
+                    ctx.stroke();
+                    
+                    // Cắt xén (clip) để các nét vẽ Gojo không bị tràn ra ngoài tam giác
+                    ctx.clip();
+
+                    // --- Vẽ Gojo Carton ---
+                    // Cổ & Mặt
+                    ctx.fillStyle = '#ffccaa';
+                    ctx.fillRect(90, 75, 20, 20); // Cổ
+                    ctx.beginPath(); ctx.arc(100, 65, 22, 0, Math.PI); ctx.fill(); // Cằm
+                    
+                    // Áo đen
+                    ctx.fillStyle = '#222';
+                    ctx.beginPath(); ctx.moveTo(70, 150); ctx.lineTo(100, 90); ctx.lineTo(130, 150); ctx.fill();
+
+                    // Băng bịt mắt
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(72, 45, 56, 18);
+                    
+                    // Tóc trắng vuốt dựng
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.arc(100, 48, 28, 0, Math.PI*2); ctx.fill(); // Phồng tóc
+                    ctx.beginPath(); ctx.moveTo(60, 50); ctx.lineTo(90, 5); ctx.lineTo(110, 5); ctx.lineTo(140, 50); ctx.fill(); // Gai tóc
+                    
+                    // 2 tay chắp lại (ấn chú)
+                    ctx.fillStyle = '#ffccaa';
+                    ctx.beginPath(); ctx.arc(94, 115, 8, 0, Math.PI*2); ctx.fill(); // Tay trái
+                    ctx.beginPath(); ctx.arc(106, 115, 8, 0, Math.PI*2); ctx.fill(); // Tay phải
+                    
+                    // Cầu sáng tím lóe lên trên tay Gojo
+                    let miniPurpleSize = 4 + Math.random() * 4;
+                    ctx.fillStyle = '#8a2be2';
+                    ctx.shadowBlur = 15; ctx.shadowColor = '#8a2be2';
+                    ctx.beginPath(); ctx.arc(100, 105, miniPurpleSize, 0, Math.PI*2); ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+                ctx.restore(); // Kết thúc vẽ UI không gian
+
+                // 3. VẼ HAI QUẢ CẦU ĐỎ XANH HỢP NHẤT Ở SAU LƯNG TƯỚNG (Giữ lại logic cũ)
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.9)';
+                ctx.shadowBlur = 15; ctx.shadowColor = 'red';
+                ctx.beginPath(); ctx.arc(mergeX, mergeY - distance, 15, 0, Math.PI*2); ctx.fill();
+                
+                ctx.fillStyle = 'rgba(0, 0, 255, 0.9)';
+                ctx.shadowBlur = 15; ctx.shadowColor = 'blue';
+                ctx.beginPath(); ctx.arc(mergeX, mergeY + distance, 15, 0, Math.PI*2); ctx.fill();
+                
+                ctx.shadowBlur = 0; 
+                
+                // Cầu tím khổng lồ bùng nổ khi sắp vận xong
+                if (progress > 0.8) {
+                    let purpleRadius = 20 + ((progress - 0.8) * 80);
+                    ctx.fillStyle = `rgba(138, 43, 226, ${(progress - 0.8) * 5})`;
+                    ctx.beginPath(); ctx.arc(mergeX, mergeY, purpleRadius, 0, Math.PI*2); ctx.fill();
+                }
+            }
+            if (this.spaceBuffCount > 0) {
+                ctx.fillStyle = '#ff00ff';
+                for(let i=0; i<this.spaceBuffCount; i++) {
+                    ctx.fillRect(this.x + i*6 - 2, this.y - 10, 4, 4);
+                }
+            }
+
+            if (this.plasmaChargeTimer > 0) {
+                let size = ((135 - this.plasmaChargeTimer) / 135) * 35; 
+                ctx.fillStyle = `rgba(255, 50, 255, 0.8)`;
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y - 40, size, 0, Math.PI*2);
+                ctx.fill();
+
+                if (this.plasmaMark) {
+                    ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)'; 
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); 
+                    ctx.arc(this.plasmaMark.x, this.plasmaMark.y, 20, 0, Math.PI*2); 
+                    ctx.stroke();
+                    ctx.beginPath(); 
+                    ctx.moveTo(this.plasmaMark.x - 25, this.plasmaMark.y);
+                    ctx.lineTo(this.plasmaMark.x + 25, this.plasmaMark.y);
+                    ctx.moveTo(this.plasmaMark.x, this.plasmaMark.y - 25);
+                    ctx.lineTo(this.plasmaMark.x, this.plasmaMark.y + 25);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        takeDamage(amount) {
+            if (this.fireSoulTimer > 0) return; 
+            if (this.waterShieldTimer > 0) return;
+            
+            // Giảm 75% sát thương khi đang vận hoặc bắn Kamehameha
+            if (this.isKamehamehaing || (this.isChanneling && this.skillType === 'kamehameha')) {
+                amount *= 0.25; 
+            } else if (this.isBlocking) {
+                amount *= 0.2;
+            }
+            
+            this.hp -= amount;
+            if (this.hp <= 0) {
+                this.hp = 0;
+                this.isDead = true;
+            }
+        }
+    }
+
+    // --- CÁC CLASS CÂY (PLANTING TREES) ---
+
+    class Plant {
+        constructor(x, y, owner, type, facingRight) {
+            this.x = x; this.y = y;
+            this.owner = owner;
+            this.type = type;
+            this.facingRight = facingRight;
+            this.active = true;
+            this.isDead = false;
+            this.vy = 0;
+            
+            this.width = 16; 
+            this.height = 32;
+
+            if (type === 'sunflower') {
+                this.maxHp = 30; this.hp = 30;
+                this.lifeTimer = 0;
+            } else if (type === 'peashooter') {
+                this.maxHp = 15; this.hp = 15;
+                this.attackCooldown = 0;
+            } else if (type === 'wallnut') {
+                this.maxHp = 200; this.hp = 200;
+                this.width = 24; 
+                this.height = 30;
+                this.y -= 2; 
+            }
+        }
+
+        update() {
+            if (!this.active) return;
+            if (this.frozenTimer && this.frozenTimer > 0) { this.frozenTimer--; return; }
+            if (this.hp <= 0 && !this.isDead) {
+                this.hp = 0;
+                this.isDead = true;
+                this.active = false;
+                return;
+            }
+
+            this.vy += gravity;
+            this.y += this.vy;
+
+            let onGround = false;
+            if (this.y + this.height >= canvas.height - groundHeight) {
+                this.y = canvas.height - groundHeight - this.height;
+                this.vy = 0;
+                onGround = true;
+            }
+            for (let plat of platforms) {
+                if (this.vy > 0 && this.y + this.height - this.vy <= plat.y && this.x + this.width > plat.x && this.x < plat.x + plat.w && this.y + this.height >= plat.y) {
+                    this.y = plat.y - this.height;
+                    this.vy = 0;
+                    onGround = true;
+                }
+            }
+
+            if (this.type === 'sunflower') {
+                this.lifeTimer++;
+                if (this.lifeTimer > 420) { 
+                    if (this.lifeTimer % 60 === 0) { 
+                        if (Math.random() < 0.1) { 
+                            suns.push(new SunProjectile(this.x + this.width/2 - 7.5, this.y - 15, this.owner));
+                        }
+                    }
+                }
+            } else if (this.type === 'peashooter') {
+                if (this.attackCooldown > 0) this.attackCooldown--;
+                else {
+                    let enemyPlayer = (this.owner === player1) ? player2 : player1;
+                    let target = enemyPlayer;
+                    let minDist = 9999;
+                    
+                    for (let m of minions) {
+                        if (m.owner !== this.owner && m.active && !m.isDead) {
+                            let dist = Math.hypot(m.x - this.x, m.y - this.y);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                target = m;
+                            }
+                        }
+                    }
+                    
+                    let dx = target.x + target.width/2 - (this.x + this.width/2);
+                    let dy = target.y + target.height/2 - (this.y + 5);
+                    this.facingRight = dx > 0;
+                    
+                    let angle = Math.atan2(dy, dx);
+                    
+                    projectiles.push(new DirectedProjectile(
+                        this.x + this.width/2, this.y + 5, 
+                        Math.cos(angle) * 12, Math.sin(angle) * 12, 
+                        '#32cd32', this.owner, 4, 10, 10
+                    ));
+                    this.attackCooldown = 35;
+                }
+            }
+        }
+
+        draw() {
+            if (!this.active) return;
+            ctx.save();
+            ctx.translate(this.x + this.width/2, this.y + this.height);
+            
+            if (this.type === 'sunflower') {
+                let isGlowing = (this.lifeTimer > 420);
+                if (isGlowing) {
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#FFD700';
+                }
+                
+                ctx.fillStyle = '#228B22'; 
+                ctx.fillRect(-4, -30, 8, 30);
+                
+                ctx.fillStyle = '#90EE90'; 
+                ctx.beginPath(); ctx.ellipse(-10, -15, 7, 3, Math.PI/6, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(10, -15, 7, 3, -Math.PI/6, 0, Math.PI*2); ctx.fill();
+                
+                ctx.translate(0, -30);
+                ctx.fillStyle = '#FFD700'; 
+                for(let i=0; i<8; i++) {
+                    ctx.beginPath();
+                    ctx.arc(Math.cos(i*Math.PI/4)*12, Math.sin(i*Math.PI/4)*12, 6, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI*2); ctx.fill();
+                
+                ctx.fillStyle = '#8B4513';
+                ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI*2); ctx.fill();
+                ctx.shadowBlur = 0;
+                
+            } else if (this.type === 'peashooter') {
+                ctx.fillStyle = '#228B22';
+                ctx.fillRect(-3, -25, 6, 25);
+                
+                ctx.fillStyle = '#90EE90';
+                ctx.beginPath(); ctx.ellipse(-8, -10, 6, 3, Math.PI/4, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(8, -10, 6, 3, -Math.PI/4, 0, Math.PI*2); ctx.fill();
+                
+                ctx.translate(0, -25);
+                ctx.fillStyle = '#90EE90';
+                ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2); ctx.fill();
+                
+                let mouthX = this.facingRight ? 12 : -12;
+                ctx.beginPath(); ctx.arc(mouthX, 0, 6, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#006400'; 
+                ctx.beginPath(); ctx.arc(mouthX + (this.facingRight?2:-2), 0, 4, 0, Math.PI*2); ctx.fill();
+                
+                ctx.fillStyle = 'black';
+                let eyeX = this.facingRight ? 3 : -3;
+                ctx.beginPath(); ctx.arc(eyeX, -4, 2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(eyeX + (this.facingRight?4:-4), -4, 2, 0, Math.PI*2); ctx.fill();
+                
+            } else if (this.type === 'wallnut') {
+                ctx.fillStyle = '#CD853F'; 
+                
+                ctx.beginPath(); ctx.ellipse(0, -15, 12, 16, 0, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = '#A0522D';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                ctx.beginPath(); ctx.moveTo(-3, -25); ctx.lineTo(-1, -18); ctx.lineTo(-4, -12); ctx.stroke();
+                
+                ctx.fillStyle = 'black';
+                let eyeX = this.facingRight ? 2 : -2;
+                ctx.beginPath(); ctx.arc(eyeX - 3, -13, 2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(eyeX + 3, -13, 2, 0, Math.PI*2); ctx.fill();
+                
+                ctx.beginPath(); ctx.arc(eyeX, -8, 2, 0.2, Math.PI - 0.2); ctx.stroke();
+            }
+            
+            ctx.restore();
+
+            ctx.fillStyle = 'black';
+            ctx.fillRect(this.x, this.y - 10, this.width, 4);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(this.x, this.y - 10, this.width * (this.hp / this.maxHp), 4);
+        }
+
+        takeDamage(amount) {
+            this.hp -= amount;
+        }
+    }
+
+    class SunProjectile {
+        constructor(x, y, targetPlayer) {
+            this.x = x; this.y = y;
+            this.targetPlayer = targetPlayer;
+            this.width = 15; this.height = 15;
+            this.active = true;
+            this.speed = 1;
+        }
+        update() {
+            let dx = this.targetPlayer.x + this.targetPlayer.width/2 - (this.x + this.width/2);
+            let dy = this.targetPlayer.y + this.targetPlayer.height/2 - (this.y + this.height/2);
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 15) {
+                this.targetPlayer.hp = Math.min(this.targetPlayer.maxHp, this.targetPlayer.hp + 15);
+                this.active = false;
+            } else {
+                this.x += (dx/dist) * this.speed;
+                this.y += (dy/dist) * this.speed;
+            }
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = '#FFD700';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#FFA500';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    // --- CÁC CLASS PROJECTILE ---
+
+    class Projectile {
+        constructor(x, y, vx, color, owner, damage, width, height) {
+            this.x = x; this.y = y;
+            this.vx = vx;
+            this.width = width; this.height = height;
+            this.color = color;
+            this.owner = owner;
+            this.damage = damage;
+            this.active = true;
+            this.isPoison = false; 
+            this.frozenTimer = 0; 
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            if (this.x < 0 || this.x > canvas.width) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+        applyEffect(target) {
+            target.takeDamage(this.damage);
+            if (this.isPoison && target instanceof Player) {
+                target.poisonTimer = 300;
+            }
+            if (this.owner.skillType === 'scratchingBlood' && this.damage > 0 && target instanceof Player) {
+                this.owner.hp = Math.min(this.owner.maxHp, this.owner.hp + 1); 
+            }
+            this.active = false;
+        }
+    }
+
+    class BubbleProjectile extends Projectile {
+        constructor(x, y, vx, owner) {
+            super(x, y, vx, 'rgba(173, 216, 230, 0.8)', owner, 0, 25, 25);
+        }
+        applyEffect(target) {
+            if (target instanceof Player) {
+                target.bubbledTimer = 150; 
+            }
+            this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = 'rgba(173, 216, 230, 0.5)';
+            ctx.strokeStyle = '#add8e6';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+
+    class WindProjectile extends Projectile {
+        constructor(x, y, vx, owner) {
+            super(x, y, vx, 'rgba(150, 255, 150, 0.8)', owner, 19, 30, 20);
+        }
+        applyEffect(target) {
+            target.takeDamage(this.damage);
+            if (this.vx > 0) target.x = canvas.width - target.width;
+            else target.x = 0;
+            this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.ellipse(this.x + this.width/2, this.y + this.height/2, this.width/2, this.height/2, 0, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    class SnowballProjectile extends Projectile {
+        constructor(x, y, vx, owner) {
+            super(x, y, vx, '#ffffff', owner, 0, 15, 15);
+            this.maxDamage = 50;
+            this.maxSize = 70;
+            this.growRate = 0.3; 
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            if (this.y + this.height < canvas.height - groundHeight) {
+                this.y += gravity * 4;
+            } else {
+                this.y = canvas.height - groundHeight - this.height;
+            }
+            if (this.width < this.maxSize) {
+                this.width += this.growRate;
+                this.height += this.growRate;
+                this.y -= this.growRate; 
+                this.damage = Math.min(this.maxDamage, this.damage + this.growRate * 0.4);
+            }
+            if (this.x < -100 || this.x > canvas.width + 100) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    class DiamondProjectile {
+        constructor(x, y, owner) {
+            this.x = x; this.y = y; 
+            this.vy = 10; 
+            this.width = 40; this.height = 50;
+            this.owner = owner; 
+            this.damage = 50;
+            this.active = true;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.y += this.vy;
+            if (this.y + this.height >= canvas.height - groundHeight) {
+                this.active = false; 
+            }
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = '#b9f2ff'; 
+            ctx.beginPath();
+            ctx.moveTo(this.x + this.width/2, this.y); 
+            ctx.lineTo(this.x + this.width, this.y + this.height/3); 
+            ctx.lineTo(this.x + this.width/2, this.y + this.height); 
+            ctx.lineTo(this.x, this.y + this.height/3); 
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        applyEffect(target) {
+            target.takeDamage(this.damage);
+            this.active = false;
+        }
+    }
+
+    class EarthSpikeProjectile {
+        constructor(x, y, owner) {
+            this.x = x; this.y = y;
+            this.owner = owner;
+            this.damage = 27;
+            this.active = true;
+            this.isWarning = true;
+            this.warningTimer = 15;
+            this.activeDuration = 15;
+            this.width = 60; this.height = 90; 
+            this.hasDealtDamage = false;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            if (this.isWarning) {
+                this.warningTimer--;
+                if (this.warningTimer <= 0) this.isWarning = false;
+            } else {
+                this.activeDuration--;
+                if (this.activeDuration <= 0) this.active = false;
+            }
+        }
+        draw() {
+            if (!this.active) return;
+            if (this.isWarning) {
+                ctx.fillStyle = (this.warningTimer % 10 > 5) ? 'rgba(255, 0, 0, 0.6)' : 'rgba(255, 255, 0, 0.6)';
+                ctx.fillRect(this.x, this.y - 10, this.width, 10);
+            } else {
+                ctx.fillStyle = '#8B4513';
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + this.width / 2, this.y - this.height);
+                ctx.lineTo(this.x + this.width, this.y);
+                ctx.fill();
+            }
+        }
+        applyEffect(target) {
+            if (!this.hasDealtDamage) {
+                target.takeDamage(this.damage);
+                this.hasDealtDamage = true;
+            }
+        }
+    }
+
+    class LightBulletProjectile extends Projectile {
+        constructor(x, y, vx, owner) {
+            super(x, y, vx, '#ffff99', owner, 21, 15, 10);
+        }
+        applyEffect(target) {
+            target.takeDamage(this.damage);
+            if (target instanceof Player) {
+                projectiles.push(new LightHoleArea(target.x + target.width/2, target.y + target.height/2, this.owner));
+            }
+            this.active = false;
+        }
+    }
+
+    class DarkBulletProjectile extends Projectile {
+        constructor(x, y, vx, owner) {
+            super(x, y, vx, '#4b0082', owner, 17, 15, 10);
+        }
+        applyEffect(target) {
+            target.takeDamage(this.damage);
+            if (target instanceof Player) {
+                projectiles.push(new DarkHoleArea(target.x + target.width/2, target.y + target.height/2, this.owner));
+            }
+            this.active = false;
+        }
+    }
+
+    class LightHoleArea {
+        constructor(x, y, owner) {
+            this.width = 160; this.height = 160;
+            this.x = x - this.width/2; this.y = y - this.height/2;
+            this.timer = 180; 
+            this.owner = owner;
+            this.active = true;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.timer--;
+            if (this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = 'rgba(255, 255, 150, 0.4)';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI*2);
+            ctx.fill();
+        }
+        applyEffect(target) {
+            if (target instanceof Player) {
+                target.inLightHole = true;
+            }
+            if (this.timer % 20 === 0) {
+                target.takeDamage(1);
+            }
+        }
+    }
+
+    class DarkHoleArea {
+        constructor(x, y, owner) {
+            this.width = 160; this.height = 160;
+            this.x = x - this.width/2; this.y = y - this.height/2;
+            this.timer = 180; 
+            this.owner = owner;
+            this.active = true;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.timer--;
+            if (this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = 'rgba(50, 0, 100, 0.5)';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI*2);
+            ctx.fill();
+        }
+        applyEffect(target) {
+            if (target instanceof Player) {
+                target.inDarkHole = true;
+            }
+        }
+    }
+
+    class EnergyProjectile extends Projectile {
+        constructor(x, y, vx, color, owner, damage, width, height) {
+            super(x, y, vx, color, owner, damage, width, height);
+            this.bounceCount = 0;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            if (this.x <= 0) {
+                this.x = 0;
+                this.vx = -this.vx;
+                this.bounceCount++;
+                this.damage += 1;
+            } else if (this.x + this.width >= canvas.width) {
+                this.x = canvas.width - this.width;
+                this.vx = -this.vx;
+                this.bounceCount++;
+                this.damage += 1;
+            }
+            if (this.bounceCount >= 5) {
+                this.active = false;
+            }
+        }
+    }
+
+    class SoundVisual {
+        constructor(x, y) {
+            this.x = x; this.y = y;
+            this.radius = 10;
+            this.active = true;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.radius += 30; 
+            if (this.radius > 450) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+            ctx.strokeStyle = `rgba(200, 255, 255, ${Math.max(0, 1 - this.radius/450)})`;
+            ctx.lineWidth = 10;
+            ctx.stroke();
+        }
+        applyEffect() { }
+    }
+
+    class PlasmaBomb {
+        constructor(startX, startY, targetX, targetY, owner) {
+            this.x = startX; this.y = startY;
+            this.targetX = targetX; this.targetY = targetY;
+            this.owner = owner;
+            this.timer = 15; 
+            this.vx = (targetX - startX) / 15;
+            this.vy = (targetY - startY) / 15;
+            this.active = true;
+            this.isExploding = false;
+            this.explodeTimer = 30; 
+            this.frozenTimer = 0;
+            this.hasDealtDamage = false;
+            this.damage = 40; 
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            if (this.isExploding) {
+                this.explodeTimer--;
+                if (this.explodeTimer <= 0) this.active = false;
+            } else {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.timer--;
+                if (this.timer <= 0) {
+                    this.isExploding = true;
+                }
+            }
+        }
+        draw() {
+            if (!this.active) return;
+            if (this.isExploding) {
+                let maxRadius = 400; 
+                let currentRadius = maxRadius * (1 - this.explodeTimer/30);
+                
+                ctx.fillStyle = `rgba(255, 50, 255, ${this.explodeTimer/30})`;
+                ctx.beginPath();
+                ctx.arc(this.targetX, this.targetY, maxRadius, 0, Math.PI*2);
+                ctx.fill();
+                
+                ctx.strokeStyle = `rgba(200, 0, 255, ${this.explodeTimer/30})`;
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.arc(this.targetX, this.targetY, currentRadius, 0, Math.PI*2);
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = '#ff00ff';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 35, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 15, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+        applyEffect(target) {
+            if (this.isExploding && !this.hasDealtDamage) {
+                target.takeDamage(this.damage); 
+                this.hasDealtDamage = true; 
+            }
+        }
+    }
+
+    class ChaosOrbProjectile extends Projectile {
+        constructor(x, y, vx, owner) {
+            super(x, y, vx, '#ff007f', owner, 15, 25, 25);
+        }
+        applyEffect(target) {
+            target.takeDamage(this.damage);
+            if (target instanceof Player) {
+                target.chainedTimer = 180; 
+                target.chainCenter = { x: target.x + target.width/2, y: target.y + target.height/2 };
+            }
+            this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/4, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    class BloodSlash {
+        constructor(x, y, facingRight, owner) {
+            this.width = 250; this.height = 100;
+            this.x = x; 
+            this.y = y;
+            this.owner = owner;
+            this.damage = 20;
+            this.active = true;
+            this.timer = 15; 
+            this.frozenTimer = 0;
+            this.hasHit = false;
+            this.facingRight = facingRight;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.timer--;
+            if (this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = 'rgba(220, 20, 60, 0.7)';
+            ctx.beginPath();
+            if (this.facingRight) {
+                ctx.moveTo(this.x, this.y);
+                ctx.quadraticCurveTo(this.x + this.width, this.y + this.height/2, this.x, this.y + this.height);
+                ctx.lineTo(this.x, this.y + this.height);
+            } else {
+                ctx.moveTo(this.x + this.width, this.y);
+                ctx.quadraticCurveTo(this.x, this.y + this.height/2, this.x + this.width, this.y + this.height);
+                ctx.lineTo(this.x + this.width, this.y + this.height);
+            }
+            ctx.fill();
+        }
+        applyEffect(target) {
+            if (!this.hasHit) {
+                target.takeDamage(this.damage);
+                if (target instanceof Player) {
+                    this.owner.hp = Math.min(this.owner.maxHp, this.owner.hp + 5);
+                }
+                this.hasHit = true;
+            }
+        }
+    }
+
+    class DirectedProjectile extends Projectile {
+        constructor(x, y, vx, vy, color, owner, damage, width, height) {
+            super(x, y, vx, color, owner, damage, width, height);
+            this.vy = vy;
+        }
+        update() {
+            if(this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            this.y += this.vy;
+            if(this.x < -100 || this.x > canvas.width + 100 || this.y < -100 || this.y > canvas.height + 100) this.active = false;
+        }
+    }
+
+    class StiffLegKick {
+        constructor(x, y, facingRight, owner) {
+            this.width = 130; // Tầm đánh 130 (dài hơn Sword Energy là 100)
+            this.height = 30;
+            this.x = x; this.y = y;
+            this.facingRight = facingRight;
+            this.owner = owner;
+            this.damage = 8; // Gây 8 dame
+            this.active = true;
+            this.timer = 15; // Tồn tại 15 frames (0.25s)
+            this.hasHit = false;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if(this.frozenTimer > 0) { this.frozenTimer--; return; }
+            // Chân luôn dính sát vào người chơi khi đá
+            this.x = this.facingRight ? this.owner.x + this.owner.width : this.owner.x - this.width;
+            this.y = this.owner.y + this.owner.height/2;
+            this.timer--;
+            if(this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if(!this.active) return;
+            ctx.fillStyle = '#d2b48c'; // Màu da bắp chân
+            ctx.strokeStyle = '#8b4513';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.rect(this.x, this.y, this.width, this.height);
+            ctx.fill();
+            ctx.stroke();
+
+            // Vẽ bàn chân to bự ở đầu
+            ctx.fillStyle = '#cd853f';
+            if(this.facingRight) {
+                ctx.fillRect(this.x + this.width - 20, this.y - 10, 25, this.height + 20);
+            } else {
+                ctx.fillRect(this.x - 5, this.y - 10, 25, this.height + 20);
+            }
+        }
+        applyEffect(target) {
+            if(!this.hasHit) {
+                target.takeDamage(this.damage);
+                this.hasHit = true;
+            }
+        }
+    }
+
+    class MeleeArcProjectile {
+        constructor(x, y, facingRight, owner) {
+            this.width = 100; this.height = 100;
+            this.x = x; this.y = y;
+            this.facingRight = facingRight;
+            this.owner = owner;
+            this.damage = 10;
+            this.active = true;
+            this.timer = 10;
+            this.hasHit = false;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if(this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x = this.facingRight ? this.owner.x + this.owner.width : this.owner.x - this.width;
+            this.y = this.owner.y - 25;
+            this.timer--;
+            if(this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if(!this.active) return;
+            ctx.fillStyle = 'rgba(200, 200, 200, 0.6)';
+            ctx.beginPath();
+            if(this.facingRight) {
+                ctx.arc(this.x, this.y + this.height/2, 50, -Math.PI/2, Math.PI/2);
+            } else {
+                ctx.arc(this.x + this.width, this.y + this.height/2, 50, Math.PI/2, Math.PI*1.5);
+            }
+            ctx.fill();
+        }
+        applyEffect(target) {
+            if(!this.hasHit) {
+                target.takeDamage(this.damage);
+                this.hasHit = true;
+            }
+        }
+    }
+
+    class SwordWaveProjectile {
+        constructor(x, y, facingRight, owner) {
+            this.width = 60; this.height = 120;
+            this.x = x; this.y = y;
+            this.vx = facingRight ? 20 : -20;
+            this.facingRight = facingRight;
+            this.owner = owner;
+            this.damage = 15; 
+            this.active = true;
+            this.frozenTimer = 0;
+            this.draggedTarget = null;
+            this.dragTick = 0;
+        }
+        update() {
+            if(this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            
+            if(this.draggedTarget) {
+                this.draggedTarget.x = this.facingRight ? this.x - this.draggedTarget.width : this.x + this.width;
+                if(this.x <= 0 || this.x + this.width >= canvas.width) {
+                    this.active = false;
+                    this.draggedTarget = null;
+                } else {
+                    this.dragTick++;
+                    if(this.dragTick >= 30) {
+                        this.draggedTarget.takeDamage(3);
+                        this.dragTick = 0;
+                    }
+                }
+            } else {
+                if(this.x <= 0 || this.x + this.width >= canvas.width) this.active = false;
+            }
+        }
+        draw() {
+            if(!this.active) return;
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.8)';
+            ctx.beginPath();
+            if(this.facingRight) {
+                ctx.arc(this.x, this.y + this.height/2, this.height/2, -Math.PI/2, Math.PI/2);
+            } else {
+                ctx.arc(this.x + this.width, this.y + this.height/2, this.height/2, Math.PI/2, Math.PI*1.5);
+            }
+            ctx.fill();
+        }
+        applyEffect(target) {
+            if(!this.draggedTarget) {
+                target.takeDamage(this.damage);
+                this.draggedTarget = target;
+            }
+        }
+    }
+
+    class MagicOrbProjectile {
+        constructor(x, y, vx, owner) {
+            this.x = x; this.y = y;
+            this.vx = vx;
+            this.owner = owner;
+            this.width = 20; this.height = 20;
+            this.active = true;
+            this.isExploding = false;
+            this.explodeTimer = 25;
+            this.damage = 30;
+            this.frozenTimer = 0;
+            this.hasDealtDamage = false;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            if (this.isExploding) {
+                this.explodeTimer--;
+                if (this.explodeTimer <= 0) this.active = false;
+            } else {
+                this.x += this.vx;
+                if (this.x < -200 || this.x > canvas.width + 200 || this.y < -200 || this.y > canvas.height + 200) {
+                    this.active = false;
+                    if (this.owner.activeOrb === this) {
+                        this.owner.activeOrb = null;
+                        this.owner.skillCooldown = 360;
+                    }
+                }
+            }
+        }
+        detonate() {
+            this.isExploding = true;
+            this.x += this.width/2; 
+            this.y += this.height/2;
+        }
+        draw() {
+            if (!this.active) return;
+            if (this.isExploding) {
+                let maxRadius = 175; 
+                let currentRadius = maxRadius * (1 - this.explodeTimer/25);
+                ctx.fillStyle = `rgba(0, 191, 255, ${this.explodeTimer/25})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, maxRadius, 0, Math.PI*2);
+                ctx.fill();
+                
+                ctx.strokeStyle = `rgba(0, 100, 255, ${this.explodeTimer/25})`;
+                ctx.lineWidth = 8;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, currentRadius, 0, Math.PI*2);
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = '#00bfff';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/2, 0, Math.PI*2);
+                ctx.fill();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/4, 0, Math.PI*2);
+                ctx.fill();
+            }
+        }
+        applyEffect(target) {
+            if (this.isExploding && !this.hasDealtDamage) {
+                target.takeDamage(this.damage);
+                this.hasDealtDamage = true;
+            }
+        }
+    }
+
+    class BananaMinion {
+        constructor(x, y, owner, facingRight) {
+            this.x = x; this.y = y;
+            this.width = 24; this.height = 40; 
+            this.owner = owner;
+            this.facingRight = facingRight;
+            this.maxHp = 25;
+            this.hp = 25;
+            this.damage = 5;
+            this.speed = 7; 
+            this.vx = 0; this.vy = 0;
+            this.active = true;
+            this.isDead = false;
+            this.deathTimer = 30; 
+            
+            this.attackWindup = 0;
+            this.attackCooldown = 0;
+            
+            this.moveTick = 0;
+        }
+
+        update() {
+            if (!this.active) return;
+            if (this.frozenTimer && this.frozenTimer > 0) { this.frozenTimer--; return; }
+            
+            if (this.hp <= 0 && !this.isDead) {
+                this.hp = 0;
+                this.isDead = true;
+            }
+
+            if (this.isDead) {
+                this.deathTimer--;
+                if (this.deathTimer <= 0) this.active = false;
+                return; 
+            }
+
+            let enemyPlayer = (this.owner === player1) ? player2 : player1;
+            let target = enemyPlayer;
+            let closestDist = Math.abs(enemyPlayer.x - this.x);
+
+            // Kiểm tra Cây có trên đường đi không để ưu tiên
+            for (let p of plants) {
+                if (p.owner !== this.owner && p.active && !p.isDead) {
+                    let dxToEnemy = enemyPlayer.x - this.x;
+                    let dxToPlant = p.x - this.x;
+                    
+                    if (Math.sign(dxToEnemy) === Math.sign(dxToPlant) && Math.abs(dxToPlant) < closestDist) {
+                        target = p;
+                        closestDist = Math.abs(dxToPlant);
+                    }
+                }
+            }
+            
+            this.vy += gravity;
+            this.y += this.vy;
+
+            let onGround = false;
+            if (this.y + this.height >= canvas.height - groundHeight) {
+                this.y = canvas.height - groundHeight - this.height;
+                this.vy = 0;
+                onGround = true;
+            }
+            for (let plat of platforms) {
+                if (this.vy > 0 && 
+                    this.y + this.height - this.vy <= plat.y && 
+                    this.x + this.width > plat.x && 
+                    this.x < plat.x + plat.w && 
+                    this.y + this.height >= plat.y) {
+                    this.y = plat.y - this.height;
+                    this.vy = 0;
+                    onGround = true;
+                }
+            }
+
+            if (this.attackCooldown > 0) this.attackCooldown--;
+
+            let dx = target.x + target.width/2 - (this.x + this.width/2);
+            let dy = target.y + target.height/2 - (this.y + this.height/2);
+            let dist = Math.sqrt(dx*dx + dy*dy);
+
+            let attackRange = 40;
+            
+            if (this.attackWindup > 0) {
+                this.attackWindup--;
+                this.vx = 0; 
+                if (this.attackWindup <= 0) {
+                    if (dist <= attackRange + 20) { 
+                        target.takeDamage(this.damage);
+                    }
+                    this.attackCooldown = 60; 
+                }
+            } else {
+                if (Math.abs(dx) <= attackRange && Math.abs(dy) < 50) {
+                    this.vx = 0;
+                    if (this.attackCooldown <= 0) {
+                        this.attackWindup = 15; 
+                        this.facingRight = dx > 0;
+                    }
+                } else {
+                    if (dx > 5) { this.vx = this.speed; this.facingRight = true; }
+                    else if (dx < -5) { this.vx = -this.speed; this.facingRight = false; }
+                    else { this.vx = 0; }
+                }
+            }
+
+            this.x += this.vx;
+            if (this.vx !== 0) this.moveTick++;
+            else this.moveTick = 0;
+
+            if (this.x < 0) this.x = 0;
+            if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
+        }
+
+        draw() {
+            if (!this.active) return;
+            ctx.save();
+            
+            let centerX = this.x + this.width/2;
+            let centerY = this.y + this.height/2;
+            ctx.translate(centerX, centerY);
+            
+            if (this.vx !== 0 && !this.isDead) {
+                let angle = Math.sin(this.moveTick * 0.3) * 0.2; 
+                ctx.rotate(angle);
+            }
+
+            let bodyColor = this.isDead ? '#ff0000' : '#ffe135';
+            let legColor = '#3e2723';
+            let armColor = '#ffb300';
+
+            ctx.fillStyle = legColor;
+            let legOffset1 = 0; let legOffset2 = 0;
+            if (this.vx !== 0 && !this.isDead) {
+                legOffset1 = Math.sin(this.moveTick * 0.5) * 5;
+                legOffset2 = -Math.sin(this.moveTick * 0.5) * 5;
+            }
+            ctx.beginPath(); ctx.arc(-6, this.height/2 + legOffset1, 4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(6, this.height/2 + legOffset2, 4, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = bodyColor;
+            ctx.beginPath();
+            if (this.facingRight) {
+                ctx.moveTo(0, -this.height/2); 
+                ctx.quadraticCurveTo(15, -10, 5, this.height/2); 
+                ctx.lineTo(-5, this.height/2); 
+                ctx.quadraticCurveTo(5, -10, -10, -this.height/2); 
+            } else {
+                ctx.moveTo(0, -this.height/2);
+                ctx.quadraticCurveTo(-15, -10, -5, this.height/2); 
+                ctx.lineTo(5, this.height/2); 
+                ctx.quadraticCurveTo(-5, -10, 10, -this.height/2); 
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#f57f17';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            if (!this.isDead) {
+                ctx.fillStyle = 'black';
+                let eyeX = this.facingRight ? 2 : -6;
+                ctx.beginPath(); ctx.arc(eyeX, -10, 2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(eyeX + 4, -10, 2, 0, Math.PI*2); ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(eyeX + 2, -4, 3, 0, Math.PI);
+                ctx.stroke();
+
+                ctx.fillStyle = armColor;
+                if (this.attackWindup > 0) {
+                    if (this.facingRight) ctx.fillRect(-10, 0, 8, 4);
+                    else ctx.fillRect(2, 0, 8, 4);
+                } else if (this.attackCooldown > 45) { 
+                    if (this.facingRight) ctx.fillRect(5, 0, 15, 4);
+                    else ctx.fillRect(-20, 0, 15, 4);
+                } else {
+                    ctx.fillRect(-12, 0, 6, 4);
+                    ctx.fillRect(6, 0, 6, 4);
+                }
+            }
+
+            ctx.restore();
+
+            if (!this.isDead) {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(this.x, this.y - 10, this.width, 4);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(this.x, this.y - 10, this.width * (this.hp / this.maxHp), 4);
+            }
+        }
+        
+        takeDamage(amount) {
+            if (this.isDead) return;
+            this.hp -= amount;
+        }
+    }
+
+    class CheeseProjectile extends Projectile {
+        constructor(x, y, vx, owner) {
+            super(x, y, vx, '#fceea7', owner, 6, 30, 30); 
+            this.angle = 0;
+            this.rotationSpeed = vx > 0 ? 0.25 : -0.25;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            this.angle += this.rotationSpeed;
+            if (this.x < -100 || this.x > canvas.width + 100) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.save();
+            ctx.translate(this.x + this.width/2, this.y + this.height/2);
+            ctx.rotate(this.angle);
+
+            ctx.fillStyle = '#ffcc00'; 
+            ctx.strokeStyle = '#d68a00'; 
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round'; 
+            
+            ctx.beginPath();
+            ctx.moveTo(-15, -15); 
+            ctx.lineTo(15, 0);    
+            ctx.lineTo(-15, 15);  
+            ctx.quadraticCurveTo(-10, 0, -15, -15); 
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#d68a00';
+            ctx.beginPath(); ctx.arc(-8, -8, 4, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-5, 6, 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(4, 1, 2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-10, 0, 2.5, 0, Math.PI*2); ctx.fill();
+
+            ctx.restore();
+        }
+        applyEffect(target) {
+            if (Math.random() < 0.1) {
+                target.hp = 0;
+                target.isDead = true;
+                if (target instanceof Player) target.mentalDamage = true; 
+            } else {
+                target.takeDamage(this.damage);
+            }
+            this.active = false;
+        }
+    }
+    class ExplosionVisual {
+        constructor(x, y) {
+            this.x = x; this.y = y;
+            this.timer = 20;
+            this.active = true;
+            this.frozenTimer = 0;
+            this.damage = 0; // Chỉ là hiệu ứng hình ảnh
+        }
+        update() {
+            if(this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.timer--;
+            if(this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if(!this.active) return;
+            ctx.fillStyle = `rgba(255, 69, 0, ${this.timer/20})`;
+            ctx.beginPath(); ctx.arc(this.x, this.y, 80 * (1 - this.timer/20) + 20, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = `rgba(255, 215, 0, ${this.timer/20})`;
+            ctx.beginPath(); ctx.arc(this.x, this.y, 50 * (1 - this.timer/20) + 10, 0, Math.PI*2); ctx.fill();
+        }
+        applyEffect() {} // Không gây thêm sát thương vì gà đã lo
+    }
+
+    class ChickenMinion {
+        constructor(x, y, owner, facingRight) {
+            this.width = 500; // Gấp 3 lần player
+            this.height = 80;
+            this.x = x; this.y = y;
+            this.owner = owner;
+            this.facingRight = facingRight;
+            this.maxHp = 50;
+            this.hp = 50;
+            this.damage = 70;
+            this.speed = 2.5; // Tốc độ chậm
+            this.active = true;
+            this.isDead = false;
+            
+            this.state = 'seeking'; // Trạng thái: seeking (tìm địch), jumping (bay lên), falling (rơi xuống)
+            this.vy = 0;
+            this.vx = 0;
+            this.moveTick = 0;
+            this.targetDropX = 0;
+        }
+
+        update() {
+            if (!this.active) return;
+            if (this.frozenTimer && this.frozenTimer > 0) { this.frozenTimer--; return; }
+            
+            if (this.hp <= 0 && this.state === 'seeking') {
+                this.active = false; // Chết trước khi kịp bay
+                return;
+            }
+
+            let enemyPlayer = (this.owner === player1) ? player2 : player1;
+
+            if (this.state === 'seeking') {
+                // Rơi xuống đất và va chạm platform
+                this.vy += gravity;
+                this.y += this.vy;
+
+                let onGround = false;
+                if (this.y + this.height >= canvas.height - groundHeight) {
+                    this.y = canvas.height - groundHeight - this.height;
+                    this.vy = 0; onGround = true;
+                }
+                for (let plat of platforms) {
+                    if (this.vy > 0 && this.y + this.height - this.vy <= plat.y && 
+                        this.x + this.width > plat.x && this.x < plat.x + plat.w && this.y + this.height >= plat.y) {
+                        this.y = plat.y - this.height;
+                        this.vy = 0; onGround = true;
+                    }
+                }
+
+                // Đi tìm địch
+                let dx = enemyPlayer.x + enemyPlayer.width/2 - (this.x + this.width/2);
+                
+                // Nếu đến đủ gần địch thì bắt đầu bay lên
+                if (Math.abs(dx) < 30) {
+                    this.state = 'jumping';
+                    this.vy = -20; // Lực nhảy cực mạnh bay lên trời
+                    this.vx = 0;
+                    this.targetDropX = enemyPlayer.x + enemyPlayer.width/2; // Khóa vị trí để rơi xuống
+                } else {
+                    if (dx > 0) { this.vx = this.speed; this.facingRight = true; }
+                    else { this.vx = -this.speed; this.facingRight = false; }
+                }
+
+                this.x += this.vx;
+                if (this.vx !== 0) this.moveTick++;
+                
+            } else if (this.state === 'jumping') {
+                this.y += this.vy;
+                if (this.y < -400) { // Đã bay khuất màn hình
+                    this.state = 'falling';
+                    this.vy = 5;
+                    this.x = this.targetDropX - this.width/2; // Dịch chuyển ra đúng trên đầu địch
+                }
+            } else if (this.state === 'falling') {
+                this.vy += gravity * 2.5; // Rơi nhanh xuống
+                this.y += this.vy;
+
+                // Xuyên qua mọi platform, kiểm tra trúng địch
+                if (checkCollisionAdvanced(this, enemyPlayer)) {
+                    enemyPlayer.takeDamage(this.damage);
+                    projectiles.push(new ExplosionVisual(this.x + this.width/2, this.y + this.height)); // Vụ nổ
+                    this.active = false; // Biến mất sau khi nổ
+                }
+
+                // Rơi ra khỏi map (xuống lòng đất)
+                if (this.y > canvas.height + 200) {
+                    this.active = false;
+                }
+            }
+        }
+
+        draw() {
+            if (!this.active) return;
+            ctx.save();
+            
+            let centerX = this.x + this.width/2;
+            let centerY = this.y + this.height/2;
+            ctx.translate(centerX, centerY);
+            
+            // Xoay hướng
+            if (!this.facingRight) ctx.scale(-1, 1);
+
+            // -- VẼ GÀ LỰC SĨ --
+            // Thân tròn (màu trắng/vàng nhạt)
+            ctx.fillStyle = '#FFFDE7';
+            ctx.beginPath(); ctx.ellipse(0, 0, 20, 28, 0, 0, Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#FBC02D'; ctx.lineWidth = 2; ctx.stroke();
+
+            // 6 múi (cơ bụng)
+            ctx.strokeStyle = '#F57F17'; ctx.lineWidth = 1.5;
+            ctx.beginPath(); ctx.moveTo(0, 5); ctx.lineTo(0, 25); ctx.stroke(); // Rãnh giữa
+            ctx.beginPath(); ctx.moveTo(-8, 10); ctx.lineTo(8, 10); ctx.stroke(); // Ngang 1
+            ctx.beginPath(); ctx.moveTo(-9, 17); ctx.lineTo(9, 17); ctx.stroke(); // Ngang 2
+            ctx.beginPath(); ctx.moveTo(-8, 24); ctx.lineTo(8, 24); ctx.stroke(); // Ngang 3
+
+            // Đầu gà
+            // Mào đỏ
+            ctx.fillStyle = '#E53935';
+            ctx.beginPath(); ctx.arc(-4, -28, 5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(4, -32, 7, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(12, -28, 5, 0, Math.PI*2); ctx.fill();
+
+            // Mắt ngầu
+            ctx.fillStyle = 'black';
+            ctx.beginPath(); ctx.arc(8, -15, 2.5, 0, Math.PI*2); ctx.fill();
+            ctx.lineWidth = 2; ctx.strokeStyle = 'black';
+            ctx.beginPath(); ctx.moveTo(4, -19); ctx.lineTo(12, -17); ctx.stroke(); // Lông mày nhíu lại
+
+            // Mỏ cam
+            ctx.fillStyle = '#FF9800';
+            ctx.beginPath(); ctx.moveTo(16, -16); ctx.lineTo(26, -12); ctx.lineTo(16, -8); ctx.fill();
+
+            // Cánh trái (Nâng tạ)
+            ctx.fillStyle = '#FFFDE7';
+            ctx.beginPath(); ctx.moveTo(-15, -5); ctx.lineTo(-30, -15); ctx.lineWidth = 6; ctx.stroke(); // Tay
+            // Tạ (Dumbbell)
+            ctx.fillStyle = '#757575'; ctx.fillRect(-40, -17, 20, 4); // Thanh tạ
+            ctx.fillStyle = '#212121'; ctx.fillRect(-42, -22, 6, 14); // Cục tạ 1
+            ctx.fillStyle = '#212121'; ctx.fillRect(-26, -22, 6, 14); // Cục tạ 2
+
+            // Cánh phải (Flex cơ bắp)
+            ctx.fillStyle = '#FFFDE7';
+            ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(25, -5); ctx.lineTo(20, -15); ctx.lineWidth = 6; ctx.stroke(); // Cánh tay gập
+            ctx.fillStyle = '#FBC02D'; ctx.beginPath(); ctx.arc(20, -15, 4, 0, Math.PI*2); ctx.fill(); // Nắm đấm
+
+            // Chân (Màu cam, xoay tròn khi đi)
+            ctx.translate(0, 28);
+            if (this.vx !== 0 && this.state === 'seeking') {
+                let spin = this.moveTick * 0.4;
+                ctx.rotate(spin);
+                ctx.strokeStyle = '#FF9800'; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(12, 0); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, 12); ctx.stroke();
+            } else {
+                // Đứng tư thế võ sĩ
+                ctx.fillStyle = '#FF9800';
+                ctx.fillRect(-10, 0, 4, 12);
+                ctx.fillRect(6, 0, 4, 12);
+                ctx.fillRect(-14, 12, 8, 4);
+                ctx.fillRect(6, 12, 8, 4);
+            }
+
+            ctx.restore();
+
+            // Vẽ thanh máu (ẩn đi khi đang bay trên trời)
+            if (this.state === 'seeking') {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(this.x, this.y - 10, this.width, 4);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(this.x, this.y - 10, this.width * (this.hp / this.maxHp), 4);
+            }
+        }
+        
+        takeDamage(amount) {
+            // Chỉ nhận sát thương khi đang chạy dưới đất, bay lên là vô đối
+            if (this.state === 'seeking') {
+                this.hp -= amount;
+            }
+        }
+    }
+    class HollowPurpleProjectile {
+        constructor(x, y, vx, owner) {
+            this.x = x; this.y = y;
+            this.vx = vx;
+            this.owner = owner;
+            this.width = 300; // Hitbox khổng lồ
+            this.height = 300;
+            this.damage = 75;
+            this.active = true;
+            this.frozenTimer = 0;
+            this.hitTargets = new Set(); // Dùng Set để đánh xuyên mà không bị dính damage nhiều lần/frame
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            // Xóa khi bay khuất màn hình khá xa
+            if (this.x < -1000 || this.x > canvas.width + 1000) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            let centerX = this.x + this.width/2;
+            let centerY = this.y + this.height/2;
+
+            // Vòng hào quang bên ngoài
+            ctx.fillStyle = 'rgba(138, 43, 226, 0.4)';
+            ctx.shadowBlur = 50; ctx.shadowColor = '#8a2be2';
+            ctx.beginPath(); ctx.arc(centerX, centerY, this.width/2, 0, Math.PI*2); ctx.fill();
+
+            // Cốt lõi đen/tím đậm bên trong
+            ctx.fillStyle = 'rgba(25, 0, 50, 0.9)';
+            ctx.beginPath(); ctx.arc(centerX, centerY, this.width/4, 0, Math.PI*2); ctx.fill();
+
+            // Tia sét năng lượng ngẫu nhiên
+            ctx.strokeStyle = 'white'; ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, this.width/2 - 10 + Math.random()*20, 0, Math.PI*2);
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Reset
+        }
+
+        applyEffect(target) {
+            // Chỉ gây sát thương 1 lần cho mỗi mục tiêu nó đi qua
+            if (!this.hitTargets.has(target)) {
+                target.takeDamage(this.damage);
+                this.hitTargets.add(target);
+                
+                // Hiệu ứng phụ: đẩy lùi nhẹ mục tiêu
+                if (target.vx !== undefined) {
+                    target.vx += this.vx > 0 ? 10 : -10;
+                }
+            }
+        }
+    }
+    class BoomerangSawProjectile {
+        constructor(owner) {
+            this.owner = owner;
+            this.width = 125; 
+            this.height = 125;
+            this.x = owner.x + owner.width/2 - this.width/2;
+            this.y = owner.y + owner.height/2 - this.height/2;
+            this.active = true;
+            this.frozenTimer = 0;
+            
+            this.phase = 0; // 0: Xoay tại chỗ, 1: Bay lần 1, 2: Bay lần 2, 3: Thu về
+            this.timer = 180; // 3 giây (60 frame/s)
+            this.speed = 9; // Tốc độ bay chậm hơn đạn thường 3 điểm (đạn thường = 12)
+            this.vx = 0; this.vy = 0;
+            this.angle = 0;
+            
+            this.hitTargets = new Set();
+            this.targetTickMap = new Map();
+        }
+        
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.angle += 0.3; // Hiệu ứng xoay
+            
+            // Giảm hồi chiêu tick dame mỗi 0.25s (15 frames)
+            for (let [target, tick] of this.targetTickMap.entries()) {
+                if (tick > 0) this.targetTickMap.set(target, tick - 1);
+            }
+
+            let opponent = (this.owner === player1) ? player2 : player1;
+
+            if (this.phase === 0) {
+                // Đứng yên tại người tung chiêu
+                this.x = this.owner.x + this.owner.width/2 - this.width/2;
+                this.y = this.owner.y + this.owner.height/2 - this.height/2;
+                this.timer--;
+                if (this.timer <= 0) {
+                    this.phase = 1;
+                    this.hitTargets.clear();
+                    this.aimAt(opponent);
+                }
+            } else if (this.phase === 1) {
+                this.x += this.vx; this.y += this.vy;
+                if (this.isOutOfBounds()) {
+                    this.phase = 2;
+                    this.hitTargets.clear();
+                    this.aimAt(opponent); // Aim lại vị trí thứ 2 của địch
+                }
+            } else if (this.phase === 2) {
+                this.x += this.vx; this.y += this.vy;
+                if (this.isOutOfBounds()) {
+                    this.phase = 3;
+                    this.hitTargets.clear();
+                    this.aimAt(this.owner); // Aim lại vị trí hiện tại của chủ nhân
+                }
+            } else if (this.phase === 3) {
+                this.x += this.vx; this.y += this.vy;
+                
+                // Nếu cưa chạm lại chủ nhân thì thu hồi
+                let dx = Math.abs((this.x + this.width/2) - (this.owner.x + this.owner.width/2));
+                let dy = Math.abs((this.y + this.height/2) - (this.owner.y + this.owner.height/2));
+                if (dx < this.width/2 && dy < this.height/2) {
+                    this.active = false;
+                }
+                
+                // Hoặc bay ra khỏi map lần nữa cũng biến mất
+                if (this.isOutOfBounds()) {
+                    this.active = false; 
+                }
+            }
+        }
+        
+        isOutOfBounds() {
+            return (this.x < -200 || this.x > canvas.width + 200 || this.y < -200 || this.y > canvas.height + 200);
+        }
+        
+        aimAt(target) {
+            let targetX = target.x + target.width/2;
+            let targetY = target.y + target.height/2;
+            let startX = this.x + this.width/2;
+            let startY = this.y + this.height/2;
+            
+            let angle = Math.atan2(targetY - startY, targetX - startX);
+            this.vx = Math.cos(angle) * this.speed;
+            this.vy = Math.sin(angle) * this.speed;
+        }
+
+        draw() {
+            if (!this.active) return;
+            ctx.save();
+            ctx.translate(this.x + this.width/2, this.y + this.height/2);
+            ctx.rotate(this.angle);
+            
+            // Vẽ đĩa cưa
+            ctx.fillStyle = '#7a7a7a';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.width/2 - 10, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = '#333333';
+            ctx.lineWidth = 4;
+            ctx.stroke();
+
+            // Vẽ răng cưa sắc nhọn
+            ctx.fillStyle = '#eeeeee';
+            for (let i = 0; i < 16; i++) {
+                ctx.rotate((Math.PI * 2) / 16);
+                ctx.beginPath();
+                ctx.moveTo(this.width/2 - 15, -10);
+                ctx.lineTo(this.width/2, 0);
+                ctx.lineTo(this.width/2 - 15, 10);
+                ctx.fill();
+            }
+            
+            // Lõi cưa
+            ctx.fillStyle = '#ff3333';
+            ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI*2); ctx.fill();
+            
+            ctx.restore();
+        }
+
+        applyEffect(target) {
+            // Pha 0: Gây 1 dame mỗi 0.25s (15 frames)
+            if (this.phase === 0) {
+                let tick = this.targetTickMap.get(target) || 0;
+                if (tick <= 0) {
+                    target.takeDamage(1);
+                    this.targetTickMap.set(target, 15); 
+                }
+            } 
+            // Các pha sau: Gây 10 dame 1 lần khi bay xuyên qua
+            else {
+                if (!this.hitTargets.has(target)) {
+                    target.takeDamage(10);
+                    this.hitTargets.add(target);
+                }
+            }
+        }
+    }
+    class HaiPhongCitySpawner {
+        constructor(x, y, owner) {
+            this.owner = owner;
+            this.active = true;
+            this.shotsFired = 0;
+            this.maxShots = 60;
+            this.tick = 0;
+            // Xả 10 viên trong 1.2s (72 frames) => 1 viên mỗi 7 frames
+            this.fireRate = 3; 
+            this.frozenTimer = 0;
+        }
+        
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            
+            this.tick++;
+            if (this.tick >= this.fireRate) {
+                this.tick = 0;
+                this.fireShot();
+                this.shotsFired++;
+                if (this.shotsFired >= this.maxShots) {
+                    this.active = false; // Xong 10 viên thì tự hủy
+                }
+            }
+        }
+        
+        fireShot() {
+            let opponent = (this.owner === player1) ? player2 : player1;
+            
+            // Tìm vị trí hiện tại của địch để lấy góc bắn (ngắm lại mỗi lần bắn)
+            let startX = this.owner.x + this.owner.width / 2;
+            let startY = this.owner.y + this.owner.height / 2;
+            let targetX = opponent.x + opponent.width / 2;
+            let targetY = opponent.y + opponent.height / 2;
+            
+            let angle = Math.atan2(targetY - startY, targetX - startX);
+            let speed = 30; // Tốc độ bay của đạn
+            let vx = Math.cos(angle) * speed;
+            let vy = Math.sin(angle) * speed;
+            
+            // Tạo 1 viên đạn DirectedProjectile (Màu đỏ cho ngầu như Hoa Phượng)
+            let proj = new DirectedProjectile(
+                startX, startY - 10, // Bắn ra từ giữa người chơi
+                vx, vy,
+                '#ff0000', // Đạn màu đỏ
+                this.owner, 
+                1, // Dame: 2
+                12, 12 // Kích thước đạn
+            );
+            projectiles.push(proj);
+        }
+        
+        draw() {} // Bản thân bộ xả này tàng hình, chỉ có đạn mới vẽ ra
+        applyEffect() {} // Không gây sát thương trực tiếp
+    }
+
+    class DustParticle {
+        constructor(x, y, vx, vy, color) {
+            this.x = x; this.y = y;
+            this.vx = vx; this.vy = vy;
+            this.color = color;
+            this.life = 30 + Math.random() * 20;
+            this.maxLife = this.life;
+            this.size = 3 + Math.random() * 5;
+            this.active = true;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.vy += 0.3; // Trọng lực của đá rơi
+            this.x += this.vx;
+            this.y += this.vy;
+            this.life--;
+            if (this.life <= 0) this.active = false;
+        }
+        draw() {
+            if (!this.active) return;
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = this.life / this.maxLife; // Mờ dần khi biến mất
+            ctx.fillRect(this.x, this.y, this.size, this.size);
+            ctx.globalAlpha = 1.0;
+        }
+        applyEffect() {} // Chỉ là hiệu ứng
+    }
+
+    class EnderDragonSkill {
+        constructor(owner) {
+            this.owner = owner;
+            this.facingRight = owner.facingRight;
+            this.width = 180; // Chiều dài rồng
+            this.height = 60;
+            
+            // Bay từ tít đằng sau lưng player
+            this.x = this.facingRight ? this.owner.x - 600 : this.owner.x + 600;
+            // Cao gấp 4 lần chiều cao player (Player cao 32 -> 128px, lấy 150px cho an toàn)
+            this.y = this.owner.y - 150;
+            
+            this.vx = this.facingRight ? 12 : -12; // Tốc độ bay
+            this.active = true;
+            this.frozenTimer = 0;
+            
+            this.damage = 10; // 10 dame
+            this.targetTickMap = new Map(); // Quản lý thời gian giật dame
+            this.animTick = 0;
+        }
+
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x += this.vx;
+            this.animTick++;
+
+            // Giảm hồi chiêu dame (6 frames = 0.1s ở 60fps)
+            for (let [target, tick] of this.targetTickMap.entries()) {
+                if (tick > 0) this.targetTickMap.set(target, tick - 1);
+            }
+
+            // Xóa rồng khi bay khuất màn hình
+            if ((this.facingRight && this.x > canvas.width + 200) || 
+                (!this.facingRight && this.x < -400)) {
+                this.active = false;
+            }
+        }
+
+        draw() {
+            if (!this.active) return;
+            ctx.save();
+            
+            let centerX = this.x + this.width/2;
+            let centerY = this.y + this.height/2;
+            ctx.translate(centerX, centerY);
+            if (!this.facingRight) ctx.scale(-1, 1); // Lật ảnh nếu quay trái
+            
+            // Vẽ hơi thở hình quạt (Dragon's Breath) - Tỏa xuống dưới
+            // Quạt nghiêng về phía trước và dưới
+            ctx.fillStyle = (this.animTick % 4 < 2) ? 'rgba(186, 85, 211, 0.6)' : 'rgba(138, 43, 226, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(70, -10); // Phát ra từ mõm
+            ctx.lineTo(250, 300); // Rộng ra phía trước
+            ctx.lineTo(-50, 300); // Rộng ra phía sau (chiều sâu của quạt)
+            ctx.fill();
+
+            // -- VẼ RỒNG ENDER (MINECRAFT STYLE) --
+            // 1. Đuôi rồng
+            ctx.fillStyle = '#111111';
+            ctx.fillRect(-120, -5, 30, 15);
+            ctx.fillRect(-150, -2, 30, 10);
+            
+            // 2. Thân rồng
+            ctx.fillStyle = '#1a1a1a'; // Đen xám
+            ctx.fillRect(-90, -15, 110, 30);
+            
+            // Gai trên lưng rồng
+            ctx.fillStyle = '#333333';
+            for(let i = 0; i < 4; i++) {
+                ctx.fillRect(-70 + (i*25), -25, 10, 10);
+            }
+
+            // 3. Cổ và Đầu
+            ctx.fillRect(20, -25, 30, 20); // Cổ
+            ctx.fillRect(40, -40, 35, 30); // Đầu vuông
+            ctx.fillRect(75, -25, 25, 15); // Mõm dài ra trước
+            
+            // 4. Mắt phát sáng tím
+            ctx.fillStyle = '#aa00ff';
+            ctx.shadowBlur = 10; ctx.shadowColor = '#aa00ff';
+            ctx.fillRect(55, -35, 10, 8);
+            ctx.shadowBlur = 0;
+            
+            // 5. Chân rồng
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(-60, 15, 15, 25);
+            ctx.fillRect(0, 15, 15, 25);
+            // Móng vuốt
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(-55, 40, 10, 5);
+            ctx.fillRect(5, 40, 10, 5);
+
+            // 6. Cánh khối vuông đập lên xuống
+            let wingOffset = Math.sin(this.animTick * 0.25) * 30; // Chuyển động đập
+            ctx.fillStyle = '#0d0d0d';
+            ctx.beginPath();
+            ctx.moveTo(-40, -15); // Gốc cánh
+            ctx.lineTo(-10, -80 + wingOffset); // Chóp trên
+            ctx.lineTo(-90, -60 + wingOffset); // Chóp đuôi cánh
+            ctx.closePath();
+            ctx.fill();
+            // Xương cánh
+            ctx.strokeStyle = '#222222'; ctx.lineWidth = 3;
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        applyEffect(target) {
+            // Check timer giật dame, 6 frame = 0.1s
+            let tick = this.targetTickMap.get(target) || 0;
+            if (tick <= 0) {
+                target.takeDamage(this.damage);
+                this.targetTickMap.set(target, 6); // Reset tick
+            }
+        }
+    }
+
+    class TrampleFoot {
+        constructor(x, owner) {
+            this.width = 120;
+            this.height = 200;
+            this.x = x;
+            this.y = -this.height - 100; // Xuất hiện tít trên trời
+            this.owner = owner;
+            this.damage = 27;
+            this.active = true;
+            this.frozenTimer = 0;
+            
+            this.state = 'falling'; // Trạng thái: rơi, chạm đất, nhấc lên
+            this.vy = 30; // Tốc độ rơi cực gắt
+            this.groundTimer = 25; // Nằm trên đất khoảng gần nửa giây
+            
+            this.hasDealtDamage = false;
+        }
+        
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            
+            let opponent = (this.owner === player1) ? player2 : player1;
+
+            if (this.state === 'falling') {
+                this.y += this.vy;
+                
+                // Kiểm tra va chạm: Chạm vào địch là gây dame luôn, đồng thời đè địch xuống
+                if (this.y + this.height > opponent.y && 
+                    this.y < opponent.y + opponent.height &&
+                    this.x < opponent.x + opponent.width &&
+                    this.x + this.width > opponent.x) {
+                    
+                    // Nổ dame ngay lập tức khi vừa chạm (chỉ nổ 1 lần)
+                    if (!this.hasDealtDamage) {
+                        opponent.takeDamage(this.damage);
+                        this.hasDealtDamage = true;
+                    }
+                    
+                    // Ép vị trí Y của địch xuống sát lòng bàn chân (vẫn đè xuống đất)
+                    opponent.y = this.y + this.height;
+                    opponent.vy = this.vy; 
+                    opponent.onGround = false;
+                }
+
+                // Kiểm tra chạm mặt đất (đã bỏ qua bậc đá trên không)
+                let hitGround = false;
+                let groundY = canvas.height - groundHeight;
+                
+                if (this.y + this.height >= groundY) {
+                    this.y = groundY - this.height;
+                    hitGround = true;
+                }
+
+                if (hitGround) {
+                    this.state = 'grounded';
+                    this.vy = 0;
+                    this.spawnParticles(); // Văng sỏi đá khi chạm đất
+                }
+
+            } else if (this.state === 'grounded') {
+                this.groundTimer--;
+                if (this.groundTimer <= 0) {
+                    this.state = 'rising';
+                    this.vy = -12; // Tốc độ nhấc chân lên
+                }
+            } else if (this.state === 'rising') {
+                this.y += this.vy;
+                if (this.y < -this.height - 100) {
+                    this.active = false; // Xóa khỏi bộ nhớ khi bay khuất
+                }
+            }
+        }
+        
+        spawnParticles() {
+            let colors = ['#888888', '#555555', '#a0522d', '#d2b48c']; // Màu đá vụn và bụi đất
+            for (let i = 0; i < 25; i++) {
+                let px = this.x + Math.random() * this.width;
+                let py = this.y + this.height - 5;
+                let pvx = (Math.random() - 0.5) * 18; // Văng sang 2 bên
+                let pvy = -Math.random() * 8 - 2; // Bắn nảy lên
+                let c = colors[Math.floor(Math.random() * colors.length)];
+                projectiles.push(new DustParticle(px, py, pvx, pvy, c));
+            }
+        }
+
+        draw() {
+            if (!this.active) return;
+            ctx.save();
+            
+            // Vẽ bàn chân nghiêng bên cạnh (Side View)
+            ctx.fillStyle = '#f2c6a0'; // Màu da
+            ctx.strokeStyle = '#c49a7a'; // Viền màu da tối
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            // Cổ chân trái
+            ctx.moveTo(this.x + 30, this.y); 
+            ctx.lineTo(this.x + 30, this.y + this.height - 40); 
+            
+            // Bo tròn gót chân
+            ctx.quadraticCurveTo(this.x + 20, this.y + this.height, this.x + 50, this.y + this.height);
+            
+            // Lòng bàn chân thẳng
+            ctx.lineTo(this.x + this.width - 20, this.y + this.height);
+            
+            // Mũi chân kéo dài và bo tròn nhẹ
+            ctx.quadraticCurveTo(this.x + this.width + 10, this.y + this.height - 5, this.x + this.width, this.y + this.height - 30);
+            
+            // Mu bàn chân cong ngược về cổ chân
+            ctx.quadraticCurveTo(this.x + 70, this.y + this.height - 40, this.x + 70, this.y);
+            
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Đổ bóng gradient bên trong để tạo độ khối 2D cho gầm chân
+            ctx.fillStyle = 'rgba(0,0,0,0.1)';
+            ctx.beginPath();
+            ctx.moveTo(this.x + 35, this.y + this.height - 10);
+            ctx.lineTo(this.x + this.width - 25, this.y + this.height - 10);
+            ctx.quadraticCurveTo(this.x + this.width - 5, this.y + this.height - 15, this.x + this.width - 15, this.y + this.height - 25);
+            ctx.quadraticCurveTo(this.x + 65, this.y + this.height - 30, this.x + 65, this.y + 50);
+            ctx.lineTo(this.x + 30, this.y + 50);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#2b1b11'; // Màu lông đen xì / nâu đậm
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+
+            // 1. Lông mọc tủa ra sau bắp chân (lề trái)
+            for (let i = 0; i < 6; i++) {
+                let hY = this.y + 10 + i * 25;
+                if (hY < this.y + this.height - 40) {
+                    ctx.moveTo(this.x + 30, hY);
+                    // Vẽ nét cong cong cho nó xoăn
+                    ctx.quadraticCurveTo(this.x + 10, hY + 10, this.x + 22, hY + 20);
+                }
+            }
+
+            // 2. Lông mọc tủa ra trước ống đồng (lề phải)
+            for (let i = 0; i < 5; i++) {
+                let hY = this.y + 20 + i * 30;
+                if (hY < this.y + this.height - 50) {
+                    ctx.moveTo(this.x + 70, hY);
+                    // Vẽ nét cong cong cho nó xoăn
+                    ctx.quadraticCurveTo(this.x + 90, hY + 5, this.x + 78, hY + 15);
+                }
+            }
+
+            // 3. Lông rậm rạp dính trên bề mặt da bắp chân
+            for (let i = 0; i < 15; i++) {
+                let hX = this.x + 35 + Math.random() * 30; // Rải rác giữa bắp chân
+                let hY = this.y + 20 + Math.random() * 100;
+                if (hY < this.y + this.height - 40) {
+                    ctx.moveTo(hX, hY);
+                    ctx.quadraticCurveTo(hX - 8, hY + 5, hX + 3, hY + 12);
+                }
+            }
+            
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        applyEffect(target) {
+            // Sát thương đã được xử lý khép kín trong hàm update() 
+            // Cứ để trống hàm này để tránh bị trừ dame 2 lần do vòng lặp quét của game.
+        }
+    }
+
+    function startGame() {
+        let maxHp = parseInt(document.getElementById('input-hp').value) || 200;
+        let setupTime = parseInt(document.getElementById('input-time').value) || 1000;
+
+        timer = setupTime;
+        document.getElementById('timer').innerText = timer;
+
+        document.getElementById('selection-screen').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        platforms = [
+            { x: canvas.width * 0.15, y: canvas.height * 0.75, w: 150, h: 20 },
+            { x: canvas.width * 0.85 - 150, y: canvas.height * 0.75, w: 150, h: 20 },
+            { x: canvas.width * 0.35, y: canvas.height * 0.60, w: 150, h: 20 },
+            { x: canvas.width * 0.65 - 150, y: canvas.height * 0.60, w: 150, h: 20 },
+            { x: canvas.width * 0.5 - 100, y: canvas.height * 0.45, w: 200, h: 20 },
+            { x: canvas.width * 0.20, y: canvas.height * 0.35, w: 120, h: 20 },
+            { x: canvas.width * 0.80 - 120, y: canvas.height * 0.35, w: 120, h: 20 },
+            { x: canvas.width * 0.40, y: canvas.height * 0.20, w: 100, h: 20 },
+            { x: canvas.width * 0.60 - 100, y: canvas.height * 0.20, w: 100, h: 20 }
+        ];
+
+        player1 = new Player(canvas.width * 0.1, canvas.height - groundHeight - 32, '#ff4d4d', { left: 'a', right: 'd', up: 'w', down: 's', block: 's', attack: 'f', skill: 'g', baseDash: 'h' }, true, p1Skill, maxHp);
+        player2 = new Player(canvas.width * 0.9 - 16, canvas.height - groundHeight - 32, '#4da6ff', { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', block: 'ArrowDown', attack: 'l', skill: 'k', baseDash: 'j' }, false, p2Skill, maxHp);
+        
+        minions = []; 
+        plants = [];
+        suns = [];
+        projectiles = [];
+        
+        gameActive = true;
+
+        timerInterval = setInterval(() => {
+            if (!gameActive) return;
+            timer--;
+            document.getElementById('timer').innerText = timer;
+            if (timer <= 0) endGame(false);
+        }, 1000);
+
+        gameLoop();
+    }
+
+    function checkCollisionAdvanced(rect, target) {
+        if (rect instanceof EarthSpikeProjectile) {
+            if (rect.isWarning) return false;
+            let spikeRect = { x: rect.x, y: rect.y - rect.height, width: rect.width, height: rect.height };
+            return (spikeRect.x < target.x + target.width &&
+                    spikeRect.x + spikeRect.width > target.x &&
+                    spikeRect.y < target.y + target.height &&
+                    spikeRect.y + spikeRect.height > target.y);
+        } else if (rect instanceof PlasmaBomb) {
+            if (!rect.isExploding) return false; 
+            let circleX = rect.targetX;
+            let circleY = rect.targetY;
+            let radius = 400; 
+            let closestX = Math.max(target.x, Math.min(circleX, target.x + target.width));
+            let closestY = Math.max(target.y, Math.min(circleY, target.y + target.height));
+            let dx = circleX - closestX;
+            let dy = circleY - closestY;
+            return (dx * dx + dy * dy) < (radius * radius);
+        } else if (rect instanceof MagicOrbProjectile) {
+            if (!rect.isExploding) return false;
+            let circleX = rect.x;
+            let circleY = rect.y;
+            let radius = 120;
+            let closestX = Math.max(target.x, Math.min(circleX, target.x + target.width));
+            let closestY = Math.max(target.y, Math.min(circleY, target.y + target.height));
+            let dx = circleX - closestX;
+            let dy = circleY - closestY;
+            return (dx * dx + dy * dy) < (radius * radius);
+        } else if (rect instanceof SoundVisual) {
+            return false; 
+        } else if (rect instanceof EnderDragonSkill) {
+            // Tính toán hitbox hình quạt (đơn giản hóa thành khối chữ nhật lớn quét từ miệng rồng xuống đất)
+            let mouthX = rect.facingRight ? rect.x + rect.width - 20 : rect.x + 20;
+            let mouthY = rect.y + rect.height / 2;
+            
+            let breathWidth = 300; // Độ rộng của hơi thở dưới đất
+            let breathHeight = 350; // Quét sâu xuống lòng đất qua vị trí player
+            
+            // Tọa độ hộp hơi thở
+            let bX = rect.facingRight ? mouthX - 50 : mouthX - breathWidth + 50;
+            let bY = mouthY;
+
+            return (bX < target.x + target.width &&
+                    bX + breathWidth > target.x &&
+                    bY < target.y + target.height &&
+                    bY + breathHeight > target.y);
+        } else if (rect instanceof BoomerangSawProjectile) {
+            let circleX = rect.x + rect.width/2;
+            let circleY = rect.y + rect.height/2;
+            let radius = rect.width/2; 
+            let closestX = Math.max(target.x, Math.min(circleX, target.x + target.width));
+            let closestY = Math.max(target.y, Math.min(circleY, target.y + target.height));
+            let dx = circleX - closestX;
+            let dy = circleY - closestY;
+            return (dx * dx + dy * dy) < (radius * radius);
+            } else {
+            return (rect.x < target.x + target.width &&
+                    rect.x + rect.width > target.x &&
+                    rect.y < target.y + target.height &&
+                    rect.y + rect.height > target.y);
+        } 
+    }
+
+    function endGame(isMentalDamage = false) {
+        gameActive = false;
+        clearInterval(timerInterval);
+        const gameOverUI = document.getElementById('game-over');
+        gameOverUI.style.display = 'block';
+
+        if (isMentalDamage) {
+            let loserNum = (player1.hp <= 0) ? 1 : 2;
+            gameOverUI.innerText = `P${loserNum} thua vì : emotional damage!`;
+        } else {
+            if (player1.hp === player2.hp) gameOverUI.innerText = "HÒA!";
+            else if (player1.hp > player2.hp) gameOverUI.innerText = "PLAYER 1 THẮNG!";
+            else gameOverUI.innerText = "PLAYER 2 THẮNG!";
+        }
+        
+        gameOverUI.innerHTML += "<br><span style='font-size:24px; cursor:pointer; color: #aaa;' onclick='location.reload()'>Nhấn để làm lại từ đầu</span>";
+    }
+
+    function gameLoop() {
+        if (!gameActive) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#3a2e24'; 
+        ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
+        ctx.fillStyle = '#1e5e3a'; 
+        ctx.fillRect(0, canvas.height - groundHeight, canvas.width, 10);
+        ctx.fillStyle = '#666';
+        for (let plat of platforms) {
+            ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+            ctx.fillStyle = '#888'; 
+            ctx.fillRect(plat.x, plat.y, plat.w, 4);
+            ctx.fillStyle = '#666';
+        }
+
+        player1.update();
+        player1.draw();
+        player2.update();
+        player2.draw();
+
+        for (let i = plants.length - 1; i >= 0; i--) {
+            let p = plants[i];
+            p.update();
+            p.draw();
+            if (!p.active) plants.splice(i, 1);
+        }
+
+        for (let i = suns.length - 1; i >= 0; i--) {
+            suns[i].update();
+            suns[i].draw();
+            if (!suns[i].active) suns.splice(i, 1);
+        }
+
+        if (player2.isDashing && player2.skillType === 'lightningDash' && checkCollisionAdvanced(player2, player1) && !player2.hasHitWithDash) {
+            player1.takeDamage(7); player2.hasHitWithDash = true;
+        }
+        if (player1.isDashing && player1.skillType === 'lightningDash' && checkCollisionAdvanced(player1, player2) && !player1.hasHitWithDash) {
+            player2.takeDamage(7); player1.hasHitWithDash = true;
+        }
+
+        if (player1.fireSoulTimer > 0 && checkCollisionAdvanced(player1, player2)) {
+            player2.fireSoulBurnTimer = 180;
+        }
+        if (player2.fireSoulTimer > 0 && checkCollisionAdvanced(player2, player1)) {
+            player1.fireSoulBurnTimer = 180;
+        }
+
+        for (let i = projectiles.length - 1; i >= 0; i--) {
+            let p = projectiles[i];
+            p.update();
+            p.draw();
+
+            if (p.active) {
+                if (p.owner !== player1 && checkCollisionAdvanced(p, player1)) {
+                    let oldDmg = p.damage;
+                    if (player1.magnetizedTimer > 0 && typeof p.damage === 'number') p.damage *= 3;
+                    if (typeof p.applyEffect === 'function') p.applyEffect(player1);
+                    p.damage = oldDmg; 
+                }
+                if (p.owner !== player2 && checkCollisionAdvanced(p, player2)) {
+                    let oldDmg = p.damage;
+                    if (player2.magnetizedTimer > 0 && typeof p.damage === 'number') p.damage *= 3;
+                    if (typeof p.applyEffect === 'function') p.applyEffect(player2);
+                    p.damage = oldDmg;
+                }
+                
+                for (let j = 0; j < minions.length; j++) {
+                    let m = minions[j];
+                    if (!m.isDead && p.owner !== m.owner && checkCollisionAdvanced(p, m)) {
+                        if (typeof p.applyEffect === 'function') p.applyEffect(m);
+                    }
+                }
+
+                for (let k = 0; k < plants.length; k++) {
+                    let plant = plants[k];
+                    if (!plant.isDead && p.owner !== plant.owner && checkCollisionAdvanced(p, plant)) {
+                        let oldDmg = p.damage;
+                        if (plant.magnetizedTimer && plant.magnetizedTimer > 0 && typeof p.damage === 'number') p.damage *= 3;
+                        if (typeof p.applyEffect === 'function') p.applyEffect(plant);
+                        p.damage = oldDmg;
+                    }
+                }
+            }
+            if (!p.active) projectiles.splice(i, 1);
+        }
+
+        for (let i = minions.length - 1; i >= 0; i--) {
+            let m = minions[i];
+            m.update();
+            m.draw();
+            if (!m.active) {
+                minions.splice(i, 1);
+            }
+        }
+
+        document.getElementById('p1-health').style.width = (player1.hp / player1.maxHp * 100) + '%';
+        document.getElementById('p2-health').style.width = (player2.hp / player2.maxHp * 100) + '%';
+        
+        document.getElementById('p1-hp-text').innerText = Math.floor(player1.hp) + "/" + player1.maxHp;
+        document.getElementById('p2-hp-text').innerText = Math.floor(player2.hp) + "/" + player2.maxHp;
+        
+        let p1OnlyPassive = ['bulletsBuff', 'poisonBullets', 'energy', 'wings', 'roastedCheese', 'stiffLegs'].includes(player1.skillType);
+        let p1SkillText = p1OnlyPassive ? "Bị động" : `Skill: ${(player1.skillCooldown/60).toFixed(1)}s`;
+        if(player1.skillCooldown <= 0 && !p1OnlyPassive) p1SkillText = "Skill Sẵn sàng";
+        document.getElementById('p1-cd').innerText = p1SkillText;
+
+        let p2OnlyPassive = ['bulletsBuff', 'poisonBullets', 'energy', 'wings', 'roastedCheese', 'stiffLegs'].includes(player2.skillType);
+        let p2SkillText = p2OnlyPassive ? "Bị động" : `Skill: ${(player2.skillCooldown/60).toFixed(1)}s`;
+        if(player2.skillCooldown <= 0 && !p2OnlyPassive) p2SkillText = "Skill Sẵn sàng";
+        document.getElementById('p2-cd').innerText = p2SkillText;
+            
+        document.getElementById('p1-dash-cd').innerText = player1.baseDashCooldown > 0 
+            ? `Lướt: ${(player1.baseDashCooldown/60).toFixed(1)}s` : `Lướt Sẵn sàng`;
+        document.getElementById('p2-dash-cd').innerText = player2.baseDashCooldown > 0 
+            ? `Lướt: ${(player2.baseDashCooldown/60).toFixed(1)}s` : `Lướt Sẵn sàng`;
+
+        if (player1.isDead || player2.isDead) {
+            if (player1.mentalDamage || player2.mentalDamage) {
+                let deadPlayer = player1.isDead ? player1 : player2;
+                
+                ctx.fillStyle = '#ff0000';
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 4;
+                ctx.font = 'bold 100px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('Béo quá !', deadPlayer.x + deadPlayer.width / 2, deadPlayer.y - 20);
+                ctx.strokeText('Béo quá !', deadPlayer.x + deadPlayer.width / 2, deadPlayer.y - 20);
+                
+                endGame(true);
+                return; 
+            } else {
+                endGame(false);
+            }
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
+    class KamehamehaBeam {
+        constructor(owner) {
+            this.owner = owner;
+            this.active = true;
+            this.timer = 300; // Bắn liên tục trong 5s (5 * 60 fps)
+            // Khởi tạo góc bắn ra phía trước mặt
+            this.angle = owner.facingRight ? 0 : Math.PI;
+            this.damage = 3;
+            this.frozenTimer = 0;
+        }
+
+        update() {
+            if (this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.timer--;
+
+            // Hủy tia nếu hết 5s hoặc chủ nhân hẻo
+            if (this.timer <= 0 || this.owner.isDead) {
+                this.active = false;
+                this.owner.isKamehamehaing = false;
+                return;
+            }
+
+            // Điều khiển góc xoay của tia chầm chậm (sử dụng phím lên/xuống tương đương W/S)
+            if (keys[this.owner.controls.up]) {
+                this.angle -= 0.015; // Ngược chiều kim đồng hồ
+            }
+            if (keys[this.owner.controls.down]) {
+                this.angle += 0.015; // Cùng chiều kim đồng hồ
+            }
+
+            // Khóa nhân vật tại chỗ (bất động)
+            this.owner.vx = 0;
+            this.owner.vy = 0;
+
+            // Xử lý gây 4 sát thương mỗi 0.25s (15 frames)
+            if (this.timer % 15 === 0) {
+                this.checkCollision();
+            }
+        }
+
+        checkCollision() {
+            let ox = this.owner.x + this.owner.width / 2;
+            let oy = this.owner.y + this.owner.height / 2;
+            let targets = [];
+            
+            // Lấy mục tiêu là kẻ địch, lính, và cây cối
+            let enemy = (this.owner === player1) ? player2 : player1;
+            targets.push(enemy);
+            minions.forEach(m => { if (m.owner !== this.owner && m.active) targets.push(m); });
+            plants.forEach(p => { if (p.owner !== this.owner && p.active) targets.push(p); });
+
+            let beamLength = 2000; // Chiều dài tia xâu chuỗi bản đồ
+            let beamWidth = 60;    // Độ to của tia
+
+            for (let target of targets) {
+                if (target.isDead) continue;
+                let tx = target.x + target.width / 2;
+                let ty = target.y + target.height / 2;
+
+                let dx = tx - ox;
+                let dy = ty - oy;
+                
+                // Toán học: Xoay tọa độ mục tiêu ngược lại theo góc của tia để check hình chữ nhật
+                let rotatedX = dx * Math.cos(-this.angle) - dy * Math.sin(-this.angle);
+                let rotatedY = dx * Math.sin(-this.angle) + dy * Math.cos(-this.angle);
+
+                // Nếu mục tiêu nằm trong tầm hitbox của tia
+                if (rotatedX > 0 && rotatedX < beamLength && Math.abs(rotatedY) < (beamWidth / 2 + target.width / 2)) {
+                    target.takeDamage(this.damage);
+                }
+            }
+        }
+
+        draw() {
+            if (!this.active) return;
+            let ox = this.owner.x + this.owner.width / 2;
+            let oy = this.owner.y + this.owner.height / 2;
+
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(this.angle);
+
+            ctx.shadowBlur = 25;
+            ctx.shadowColor = '#00BFFF';
+            
+            ctx.fillStyle = 'rgba(0, 191, 255, 0.8)';
+            ctx.fillRect(0, -25, 2000, 50);
+            
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, -12, 2000, 24);
+
+            ctx.beginPath();
+            ctx.arc(0, 0, 45 + Math.random() * 15, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(135, 206, 250, 0.9)';
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        applyEffect() {
+        }
+    }
+
+    // --- BỘ CLASS DÀNH RIÊNG CHO HẮC THIỂM ---
+    
+    // 1. Hitbox đấm thường tầm gần
+    class MeleePunchHitbox {
+        constructor(x, y, facingRight, owner) {
+            this.width = 40; this.height = 32; 
+            this.x = x; this.y = y;
+            this.facingRight = facingRight;
+            this.owner = owner;
+            this.damage = 10;
+            this.active = true;
+            this.timer = 5; // Biến mất siêu nhanh (hitbox đấm)
+            this.hasHit = false;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if(this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x = this.facingRight ? this.owner.x + this.owner.width : this.owner.x - this.width;
+            this.y = this.owner.y;
+            this.timer--;
+            if(this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if(!this.active) return;
+            // Hiệu ứng gió nhẹ ở nắm đấm
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, 15, 0, Math.PI*2);
+            ctx.fill();
+        }
+        applyEffect(target) {
+            if(!this.hasHit) {
+                target.takeDamage(this.damage);
+                this.hasHit = true;
+            }
+        }
+    }
+
+    // 2. Hitbox bắt mục tiêu khi lướt
+    class BlackFlashDashHitbox {
+        constructor(owner) {
+            this.owner = owner;
+            this.width = owner.width + 20; 
+            this.height = owner.height;
+            this.active = true;
+            this.frozenTimer = 0;
+        }
+        update() {
+            if(this.frozenTimer > 0) { this.frozenTimer--; return; }
+            this.x = this.owner.facingRight ? this.owner.x : this.owner.x - 20;
+            this.y = this.owner.y;
+            
+            // Xóa hitbox nếu hụt (hết lướt)
+            if (!this.owner.isBlackFlashing || !this.owner.isDashing) {
+                this.active = false;
+                this.owner.isBlackFlashing = false;
+            }
+        }
+        draw() {} // Ẩn tàng hình
+        
+        applyEffect(target) {
+            if (!this.active || target === this.owner) return;
+            
+            // NẾU TRÚNG:
+            this.active = false;
+            this.owner.isDashing = false; // Dừng lại ngay
+            this.owner.isBlackFlashing = false;
+            this.owner.vx = 0; // Thắng gấp
+            
+            // Đóng băng màn hình ~0.2s (12 frames ở 60fps)
+            let freezeFrames = 12;
+            this.owner.frozenTimer = freezeFrames;
+            target.frozenTimer = freezeFrames;
+            
+            // Hiệu ứng Flash màn hình + Sét đen
+            projectiles.push(new ScreenFlashVisual(freezeFrames));
+            projectiles.push(new BlackFlashStrike(target, this.owner, freezeFrames));
+        }
+    }
+
+    // 3. Hiệu ứng Flash màn hình 
+    class ScreenFlashVisual {
+        constructor(duration) {
+            this.timer = duration;
+            this.active = true;
+        }
+        update() {
+            this.timer--;
+            if(this.timer <= 0) this.active = false;
+        }
+        draw() {
+            if(!this.active) return;
+            ctx.fillStyle = `rgba(255, 255, 255, ${this.timer / 12})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        applyEffect() {}
+    }
+
+    // 4. Sét đen ziczac + Sát thương đẩy lùi
+    class BlackFlashStrike {
+        constructor(target, owner, delay) {
+            this.target = target;
+            this.owner = owner;
+            this.delay = delay; 
+            this.active = true;
+            this.damage = 50; // Sát thương cực mạnh
+            this.duration = 5; // Lưu tia sét thêm xíu sau khi bung sát thương
+        }
+        update() {
+            if (this.delay > 0) {
+                this.delay--;
+                // Vừa hết Time Freeze => Nổ damage + Đẩy lùi
+                if (this.delay === 0) {
+                    this.target.takeDamage(this.damage);
+                    let knockbackDir = this.owner.x < this.target.x ? 1 : -1;
+                    this.target.vx = knockbackDir * 25; // Đẩy lùi rất xa
+                    this.target.vy = -6; // Hất bổng
+                }
+            } else {
+                this.duration--;
+                if (this.duration <= 0) this.active = false;
+            }
+        }
+        draw() {
+            if (!this.active) return;
+            // Vẽ Sét Đen rách màn hình ngay từ lúc đang Freeze
+            let x = this.target.x + this.target.width / 2;
+            let y = this.target.y + this.target.height / 2;
+            
+            ctx.save();
+            ctx.strokeStyle = '#000000'; // Sét đen
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff0000'; // Đỏ lòi ra ngoài nhìn cực tà đạo
+            ctx.lineWidth = 5;
+            
+            for (let i = 0; i < 6; i++) {
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                let curX = x;
+                let curY = y;
+                for (let j = 0; j < 4; j++) {
+                    let angle = (Math.PI * 2 / 6) * i + (Math.random() - 0.5);
+                    let dist = 30 + Math.random() * 40;
+                    curX += Math.cos(angle) * dist;
+                    curY += Math.sin(angle) * dist;
+                    ctx.lineTo(curX, curY);
+                }
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+        applyEffect() {}
+    }
+    
+</script>
+
+</body>
+</html>

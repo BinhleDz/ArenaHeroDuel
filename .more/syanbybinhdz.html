@@ -1,0 +1,1315 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>MOBA 1v1 - Meteors & Unstuck</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #222; font-family: 'Segoe UI', sans-serif; color: white; user-select: none; }
+        
+        /* Canvas */
+        #gameCanvas { display: block; background: #2e3b28; margin: 0 auto; border-left: 2px solid #555; border-right: 2px solid #555; }
+        
+        /* UI Overlay */
+        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+        
+        /* Top Bar */
+        #top-bar { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 400px; height: 60px; background: rgba(0,0,0,0.8); border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; display: flex; justify-content: space-around; align-items: center; border: 1px solid #555; border-top: 0; z-index: 5; }
+        .score-box { font-size: 24px; font-weight: bold; width: 100px; text-align: center; }
+        #p1-score { color: cyan; }
+        #p2-score { color: coral; }
+        #game-timer { font-size: 30px; color: #fff; font-family: monospace; }
+
+        /* Player Panels */
+        .player-panel { position: absolute; top: 70px; width: 300px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 8px; border: 1px solid #555; pointer-events: auto; }
+        #p1-panel { left: 10px; }
+        #p2-panel { right: 10px; text-align: right; }
+
+        /* Stats Grid */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 11px; color: #ccc; margin-top: 8px; line-height: 1.4; }
+        #p2-panel .stats-grid { direction: rtl; } 
+        #p2-panel .stats-grid > div { direction: ltr; }
+
+        /* Bars */
+        .bar-container { width: 100%; height: 12px; background: #333; margin-top: 4px; position: relative; border-radius: 2px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.1s; }
+        .shield-bar { height: 100%; position: absolute; top: 0; left: 0; background: rgba(255, 255, 255, 0.7); /* Màu trắng hơi trong suốt */z-index: 2; /* Nằm đè lên thanh máu đỏ */transition: width 0.1s;}
+        .bar-text { position: absolute; top: 0; width: 100%; text-align: center; font-size: 9px; line-height: 12px; text-shadow: 1px 1px 0 #000; }
+        .hp-bar { background: #e74c3c; } .mp-bar { background: #3498db; } .xp-bar { background: #f1c40f; }
+
+        /* Icons */
+        .cd-box { margin-top: 5px; display: flex; gap: 4px; }
+        #p2-panel .cd-box { justify-content: flex-end; }
+        .skill-icon { width: 30px; height: 30px; background: #444; border: 1px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 10px; position: relative; font-weight: bold; }
+        .skill-cd-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); color: #f1c40f; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; }
+
+        /* Selection Screen */
+        #selection-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #111; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+        .select-btn { padding: 15px 30px; margin: 10px; background: #333; color: white; border: 2px solid #666; cursor: pointer; font-size: 18px; min-width: 200px; text-align: center; }
+        .select-btn:hover { background: #555; border-color: cyan; }
+        h1 { margin-bottom: 20px; color: #f1c40f; }
+
+        /* Death Screen Overlay */
+        .death-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 40px; font-weight: bold; color: #e74c3c; text-shadow: 2px 2px 0 #000; display: none; text-align: center; z-index: 6; }
+        
+        /* Floating Text */
+        .floating-text { position: absolute; font-weight: bold; animation: floatUp 0.8s ease-out forwards; pointer-events: none; text-shadow: 1px 1px 0 #000; z-index: 5; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-30px); } }
+
+        
+    </style>
+</head>
+<body>
+
+    <div id="selection-screen">
+        <h1 id="step-title">MOBA SOLO 1VS1</h1>
+        <h2 id="step-desc" style="color:#aaa">Người 1: Chọn Tướng</h2>
+        <div id="options-container" style="display:flex; flex-direction:column; gap: 10px;"></div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="hud">
+        <div id="top-bar">
+            <div class="score-box">P1<br><span id="p1-score">0</span></div>
+            <div id="game-timer">06:00</div>
+            <div class="score-box">P2<br><span id="p2-score">0</span></div>
+        </div>
+
+        <div id="p1-death" class="death-overlay">P1 CHẾT<br><span style="font-size:20px; color:white">Hồi sinh: <span id="p1-respawn-time">5</span>s</span></div>
+        <div id="p2-death" class="death-overlay">P2 CHẾT<br><span style="font-size:20px; color:white">Hồi sinh: <span id="p2-respawn-time">5</span>s</span></div>
+
+        <div id="p1-panel" class="player-panel">
+            <div style="font-weight:bold; color:cyan;">P1: <span id="p1-name">Khoa beo béo</span> (Lv <span id="p1-lv">1</span>)</div>
+            <div class="bar-container">
+                <div id="p1-hp" class="bar-fill hp-bar" style="width:100%"></div>
+                <div id="p1-shield" class="shield-bar" style="width:0%"></div>
+                <div class="bar-text" id="p1-hp-text"></div>
+            </div>
+            <div class="bar-container"><div id="p1-mp" class="bar-fill mp-bar" style="width:100%"></div><div class="bar-text" id="p1-mp-text"></div></div>
+            <div class="bar-container"><div id="p1-xp" class="bar-fill xp-bar" style="width:0%"></div><div class="bar-text" id="p1-xp-text"></div></div>
+            
+            <div class="stats-grid">
+                <div id="p1-stats-left"></div>
+                <div id="p1-stats-right"></div>
+            </div>
+
+            <div class="cd-box">
+                <div class="skill-icon">Q<div id="p1-cd-0" class="skill-cd-overlay" style="display:none"></div></div>
+                <div class="skill-icon">E<div id="p1-cd-1" class="skill-cd-overlay" style="display:none"></div></div>
+                <div class="skill-icon">R<div id="p1-cd-2" class="skill-cd-overlay" style="display:none"></div></div>
+                <div class="skill-icon">Spc<div id="p1-cd-3" class="skill-cd-overlay" style="display:none"></div></div>
+            </div>
+        </div>
+
+        <div id="p2-panel" class="player-panel">
+            <div style="font-weight:bold; color:coral;">P2: <span id="p2-name">Bình Đz</span> (Lv <span id="p2-lv">1</span>)</div>
+            <div class="bar-container">
+                <div id="p2-hp" class="bar-fill hp-bar" style="width:100%"></div>
+                <div id="p2-shield" class="shield-bar" style="width:0%"></div>
+                <div class="bar-text" id="p2-hp-text"></div>
+            </div>
+            <div class="bar-container"><div id="p2-mp" class="bar-fill mp-bar" style="width:100%"></div><div class="bar-text" id="p2-mp-text"></div></div>
+            <div class="bar-container"><div id="p2-xp" class="bar-fill xp-bar" style="width:0%"></div><div class="bar-text" id="p2-xp-text"></div></div>
+            
+            <div class="stats-grid">
+                <div id="p2-stats-left"></div>
+                <div id="p2-stats-right"></div>
+            </div>
+
+            <div class="cd-box">
+                <div class="skill-icon">0<div id="p2-cd-3" class="skill-cd-overlay" style="display:none"></div></div>
+                <div class="skill-icon">3<div id="p2-cd-2" class="skill-cd-overlay" style="display:none"></div></div>
+                <div class="skill-icon">2<div id="p2-cd-1" class="skill-cd-overlay" style="display:none"></div></div>
+                <div class="skill-icon">1<div id="p2-cd-0" class="skill-cd-overlay" style="display:none"></div></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+// --- CẤU HÌNH ---
+const CANVAS_W = 1200;
+const CANVAS_H = 700;
+const MAX_GAME_TIME = 600; 
+const RESPAWN_TIME = 5;
+
+// Data Tướng
+const HEROES = {
+    'MASSU': {
+        name: 'Massu',
+        hp: 500, m: 100, dmg: 40, mdmg: 0, r: 550, as: 1.0, sp: 220, 
+        arm: 0, marm: 0, cr: 10, hhp: 3, hmn: 0.05, vp: 0, mvp: 0,
+        width: 40, color: '#e67e22',
+        growth: { hp: 70, cr: 5, arm: 1, marm: 1, dmg: 10 }
+    },
+    'BARION': {
+        name: 'Barion',
+        hp: 450, m: 100, dmg: 7, mdmg: 0, r: 550, as: 0.17, sp: 200, 
+        arm: 0, marm: 0, cr: 20, hhp: 5, hmn: 0.05, vp: 0.01, mvp: 0,
+        width: 40, color: '#3498db', // Màu xanh dương cho khác biệt
+        growth: { hp: 50, cr: 7, arm: 1, marm: 1, dmg: 2, vp: 0.01}
+    },
+    'KOURTER': {
+        name: 'Kourter',
+        hp: 500, m: 0, dmg: 8, mdmg: 0, r: 80, as: 0.7, sp: 240, 
+        arm: 50, marm: 70, cr: 0, hhp: 8, hmn: 0, vp: 0, mvp: 0,
+        width: 50, color: '#8e44ad', // Màu tím tank
+        growth: { hp: 120, cr: 2, arm: 3, marm: 1, dmg: 4 }
+    },
+    'ZIKKAI': {
+        name: 'Zikkai',
+        hp: 300, m: 200, dmg: 5, mdmg: 60, r: 75, as: 0.4, sp: 250, 
+        arm: 0, marm: 20, cr: 50, hhp: 8, hmn: 5, vp: 0, mvp: 0,
+        width: 45, color: '#48c9b0', // Màu xanh ngọc ma mị
+        growth: { hp: 120, cr: 5, arm: 1, marm: 3, dmg: 3, mdmg: 10 }
+    },
+    'MAGGAZIC': {
+        name: 'Maggazic',
+        hp: 800, m: 300, dmg: 10, mdmg: 45, r: 125, as: 0.8, sp: 240, 
+        arm: 75, marm: 0, cr: 50, hhp: 0, hmn: 7, vp: 0.1, mvp: 0.1, // vp 10 = 1000% hút máu, nên mình để 0.1 (10%)
+        width: 45, color: '#34495e', 
+        growth: { hp: 88, cr: 5, arm: 2.5, marm: 0, dmg: 4, mdmg: 7 }
+    },
+    
+};
+
+const SPELLS = {
+    'HOIMAU': { name: 'Hồi Máu', cd: 12, type: 'heal' },
+    'TOCBIEN': { name: 'Tốc Biến', cd: 24, type: 'flash' },
+    'PHONGTHU': { name: 'Phong Thủ', cd: 15, type: 'shield' }
+};
+
+const EXP_SPAWNS = [
+    { time: 0, val: 1, color: '#3498db', radius: 8 },
+    { time: 120, val: 10, color: '#2ecc71', radius: 10 },
+    { time: 180, val: 100, color: '#f1c40f', radius: 12 },
+    { time: 240, val: 500, color: '#e67e22', radius: 14 },
+    { time: 300, val: 2500, color: '#e74c3c', radius: 18 }
+];
+
+// --- MAP & WALLS ---
+const WALLS = [
+    { x: 200, y: 150, w: 50, h: 400 }, 
+    { x: 950, y: 150, w: 50, h: 400 }, 
+    { x: 500, y: 300, w: 200, h: 100 }, 
+    { x: 400, y: 100, w: 400, h: 30 },
+    { x: 400, y: 570, w: 400, h: 30 }
+];
+
+// --- CLASSES ---
+
+class Projectile {
+    constructor(owner, x, y, angle, speed, range, dmg, type, onHitEffect = null) {
+        this.owner = owner;
+        this.x = x; this.y = y;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.distTraveled = 0;
+        this.maxDist = range;
+        this.dmg = dmg;
+        this.type = type;
+        this.active = true;
+        this.onHitEffect = onHitEffect;
+        this.radius = 5;
+    }
+
+    update(dt) {
+        let dx = this.vx * dt;
+        let dy = this.vy * dt;
+        this.x += dx;
+        this.y += dy;
+        this.distTraveled += Math.sqrt(dx*dx + dy*dy);
+        
+        if (this.distTraveled >= this.maxDist) this.active = false;
+
+        for (let w of WALLS) {
+            if (this.x > w.x && this.x < w.x + w.w && this.y > w.y && this.y < w.y + w.h) {
+                this.active = false;
+                return;
+            }
+        }
+        
+        let enemy = (this.owner.id === 1) ? game.p2 : game.p1;
+        if (enemy.isDead) return;
+
+        let distToEnemy = Math.hypot(this.x - enemy.x, this.y - enemy.y);
+        if (distToEnemy < enemy.baseStats.width/2 + this.radius) {
+            enemy.takeDamage(this.dmg, this.type, this.owner); // Source is Player
+            if (this.onHitEffect) this.onHitEffect(enemy);
+            this.active = false;
+        }
+    }
+
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = (this.type === 'phys') ? '#fff' : '#d35400';
+        ctx.fill();
+    }
+}
+
+class Meteor {
+    constructor() {
+        // Random position within canvas
+        this.x = Math.random() * (CANVAS_W - 100) + 50;
+        this.y = Math.random() * (CANVAS_H - 100) + 50;
+        this.timer = 2.0; // 2 seconds delay
+        this.active = true;
+        this.radius = 80;
+        
+    }
+
+    update(dt) {
+        this.timer -= dt;
+        if (this.timer <= 0) {
+            this.explode();
+            this.active = false;
+        }
+    }
+
+    explode() {
+        [game.p1, game.p2].forEach(p => {
+            if (!p.isDead) {
+                let dist = Math.hypot(p.x - this.x, p.y - this.y);
+                if (dist < this.radius + p.baseStats.width/2) {
+                    // Formula: 100 + Lv*25 + 20% MaxHP
+                    let dmg = 100 + (p.level * 25) + (p.stats.hp * 0.20);
+                    // Pass 'meteor' as source type check logic later
+                    p.takeDamage(dmg, 'true', { id: 'meteor' });
+                }
+            }
+        });
+        spawnText(this.x, this.y, "BOOM!", "red");
+    }
+
+    draw(ctx) {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        // Warning color: Red with increasing opacity
+        let opacity = 0.2 + (2.0 - Math.max(0, this.timer)) * 0.4;
+        ctx.fillStyle = `rgba(231, 76, 60, ${opacity})`;
+        ctx.fill();
+        ctx.strokeStyle = `rgba(255, 0, 0, ${opacity + 0.2})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+}
+
+class Player {
+    constructor(id, heroKey, spellKey, x, y) {
+        this.id = id;
+        this.heroKey = heroKey;
+        this.spellKey = spellKey;
+        let h = HEROES[heroKey];
+        this.baseStats = { ...h }; 
+        this.stats = { ...h };
+        
+        this.currHp = this.stats.hp;
+        this.currMp = this.stats.m;
+        this.currExp = 0;
+        this.level = 1;
+        this.nextLvExp = 15;
+        this.score = 0;
+
+        this.startX = x; this.startY = y;
+        this.x = x; this.y = y;
+        this.cooldowns = [0, 0, 0, 0];
+        this.buffs = [];
+        this.shield = 0;      // Lượng máu ảo hiện tại
+        this.shieldTimer = 0; // Thời gian tồn tại của máu ảo
+        this.stunned = 0;
+        this.slowed = 0;
+        this.isDead = false;
+        this.respawnTimer = 0;
+        this.lastAttack = 0;
+
+        this.keys = { up: false, down: false, left: false, right: false };
+
+        this.zikkaiPassiveTimer = 0;
+        this.zikkaiStacks = 0; // Tối đa 4 stack (20%)
+        this.isZikkaiUlt = false; // Trạng thái chiêu cuối
+    }
+
+    update(dt) {
+        if (this.isDead) {
+            this.respawnTimer -= dt;
+            if (this.respawnTimer <= 0) this.respawn();
+            return;
+        }
+
+        for(let i=0; i<4; i++) if(this.cooldowns[i] > 0) this.cooldowns[i] -= dt;
+        if (this.stunned > 0) { 
+            this.stunned -= dt; 
+            // Even if stunned, check unstuck
+            this.ensureUnstuck();
+            return; 
+        }
+        if (this.shield > 0) {
+            this.shieldTimer -= dt;
+            if (this.shieldTimer <= 0) {
+                this.shield = 0; // Hết giờ thì mất khiên
+            }
+        }
+        this.buffs = this.buffs.filter(b => (b.time -= dt) > 0);
+        this.recalcStats();
+
+        this.currHp = Math.min(this.stats.hp, this.currHp + this.stats.hhp * dt);
+        this.currMp = Math.min(this.stats.m, this.currMp + (this.stats.m * this.stats.hmn) * dt);
+
+        let speed = this.stats.sp;
+        if (this.slowed > 0) { speed *= 0.5; this.slowed -= dt; }
+
+        let dx = 0, dy = 0;
+        if (this.keys.up) dy -= 1;
+        if (this.keys.down) dy += 1;
+        if (this.keys.left) dx -= 1;
+        if (this.keys.right) dx += 1;
+
+        if (dx !== 0 || dy !== 0) {
+            let len = Math.hypot(dx, dy);
+            dx = (dx / len) * speed * dt;
+            dy = (dy / len) * speed * dt;
+
+            // Collision prediction
+            if (!this.checkWallCollision(this.x + dx, this.y)) this.x += dx;
+            if (!this.checkWallCollision(this.x, this.y + dy)) this.y += dy;
+
+            this.x = Math.max(20, Math.min(CANVAS_W-20, this.x));
+            this.y = Math.max(20, Math.min(CANVAS_H-20, this.y));
+        }
+
+        // --- ANTI-STUCK MECHANISM ---
+        this.ensureUnstuck();
+    }
+
+    checkWallCollision(newX, newY) {
+        let r = this.baseStats.width / 2;
+        for (let w of WALLS) {
+            if (newX - r < w.x + w.w && newX + r > w.x && newY - r < w.y + w.h && newY + r > w.y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    ensureUnstuck() {
+        // If current position is inside wall, push out
+        let r = this.baseStats.width / 2;
+        let stuck = false;
+        
+        for (let w of WALLS) {
+            // Check overlapping rect
+            if (this.x + r > w.x && this.x - r < w.x + w.w &&
+                this.y + r > w.y && this.y - r < w.y + w.h) {
+                
+                // Calculate penetration depth for each side
+                let penLeft = (this.x + r) - w.x;
+                let penRight = (w.x + w.w) - (this.x - r);
+                let penTop = (this.y + r) - w.y;
+                let penBottom = (w.y + w.h) - (this.y - r);
+
+                // Find minimum penetration to push out
+                let min = Math.min(penLeft, penRight, penTop, penBottom);
+
+                if (min === penLeft) this.x -= penLeft;
+                else if (min === penRight) this.x += penRight;
+                else if (min === penTop) this.y -= penTop;
+                else if (min === penBottom) this.y += penBottom;
+                
+                stuck = true;
+            }
+        }
+        
+        // Also check world bounds
+        this.x = Math.max(r, Math.min(CANVAS_W - r, this.x));
+        this.y = Math.max(r, Math.min(CANVAS_H - r, this.y));
+    }
+
+recalcStats() {
+        let s = { ...this.baseStats };
+
+        if (this.heroKey === 'ZIKKAI') {
+            // Mỗi stack tăng 5% máu cơ bản
+            let bonusHpPct = this.zikkaiStacks * 0.05;
+            s.hp += (this.baseStats.hp * bonusHpPct);
+            
+            // Nếu đang bật chiêu cuối: Tăng 100% tốc chạy
+            if (this.isZikkaiUlt) {
+                s.sp += this.baseStats.sp * 1.0; 
+            }
+        }
+
+        this.buffs.forEach(b => {
+            if (b.type === 'range') s.r += b.val;
+            if (b.type === 'as_add') s.as += (s.as * b.val); 
+            if (b.type === 'dmg_add') s.dmg += b.val; 
+            if (b.type === 'sp_mult') {
+                let effect = b.val;
+                if (b.decay) effect *= (b.time / 1.5); // Giảm dần theo thời gian
+                s.sp += (this.baseStats.sp * effect);
+            }
+            if (b.type === 'hhp_pct') {
+                s.hhp += (s.hp * b.val);
+            }
+        });
+        this.stats = s;
+    }
+
+    levelUp() {
+        if (this.level >= 15) return;
+        this.currExp -= this.nextLvExp;
+        this.level++;
+        this.nextLvExp = Math.floor(this.nextLvExp * 0.30 + (2 ** this.level) );
+        
+        let g = HEROES[this.heroKey].growth;
+
+        // --- ĐOẠN ĐÃ SỬA ---
+        // Thay vì viết từng dòng, ta dùng vòng lặp để cộng tất cả chỉ số có trong 'growth'
+        for (let key in g) {
+            if (this.baseStats.hasOwnProperty(key)) {
+                this.baseStats[key] += g[key];
+            }
+        }
+
+        // Riêng HP: Cần cộng thêm vào máu hiện tại để thanh máu không bị tụt
+        if (g.hp) this.currHp += g.hp;
+
+        // Giới hạn Armor không quá 99% (nếu cần)
+        this.baseStats.arm = Math.min(99, this.baseStats.arm);
+        this.baseStats.marm = Math.min(99, this.baseStats.marm);
+        // -------------------
+
+        spawnText(this.x, this.y - 40, "UP!", "#f1c40f");
+    }
+
+    addExp(amount) {
+        if (this.level === 15) return;
+        this.currExp += amount;
+        while (this.currExp >= this.nextLvExp && this.level < 15) this.levelUp();
+    }
+
+    attack() {
+    if (this.heroKey === 'MAGGAZIC') {
+        let dist = Math.hypot(this.x - enemy.x, this.y - enemy.y);
+        // Kiểm tra tầm đánh (Cộng thêm độ rộng của địch để dễ trúng hơn)
+        if (dist <= this.stats.r + enemy.baseStats.width) {
+            this.lastAttack = Date.now();
+
+            // 1. HIỆU ỨNG HÌNH ẢNH (VISUAL) - Vòng tròn nhạc
+            game.meteors.push({
+                x: this.x, y: this.y, timer: 0.2, radius: this.stats.r, active: true,
+                update: function(dt) { this.timer -= dt; if(this.timer <= 0) this.active = false; },
+                draw: function(ctx) {
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                    ctx.strokeStyle = '#d980fa'; ctx.lineWidth = 3; ctx.stroke(); // Màu tím
+                }
+            });
+            spawnText(this.x, this.y - 40, "♫", "#d980fa");
+
+            // 2. TÍNH SÁT THƯƠNG (Giữ nguyên công thức gốc của game)
+            let dmgMult = 1;
+            let isCrit = Math.random() * 100 < this.stats.cr;
+            if (isCrit) dmgMult = 2; // Crit nhân đôi
+            let finalDmg = this.stats.dmg * dmgMult;
+
+            // 3. GÂY SÁT THƯƠNG NGAY LẬP TỨC
+            enemy.takeDamage(finalDmg, 'phys', this);
+            
+            // Hồi máu hút máu (Giữ nguyên logic gốc)
+            if (this.stats.vp > 0) this.heal(finalDmg * this.stats.vp);
+            if (isCrit) spawnText(enemy.x, enemy.y - 20, "CRIT!", "#e74c3c");
+        }
+        return; // Dừng lại, không chạy code bắn đạn phía dưới
+        }
+        if (this.isDead || this.isZikkaiUlt || this.disarmed || Date.now() - this.lastAttack < (this.stats.as * 1000)) return;
+        if (this.isDead || this.disarmed || Date.now() - this.lastAttack < (this.stats.as * 1000)) return;
+        let enemy = (this.id === 1) ? game.p2 : game.p1;
+        if (enemy.isDead) return;
+
+        let dist = Math.hypot(this.x - enemy.x, this.y - enemy.y);
+        if (dist <= this.stats.r) {
+            this.lastAttack = Date.now();
+            let angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+            let dmgMult = 1;
+            let isCrit = false;
+            let cr = this.stats.cr;
+            if (Math.random() * 100 < cr) { isCrit = true; dmgMult = 2; }
+
+            let finalDmg = this.stats.dmg * dmgMult;
+            game.projectiles.push(new Projectile(this, this.x, this.y, angle, 600, this.stats.r, finalDmg, 'phys', t => { 
+                if (this.stats.vp > 0) this.heal(finalDmg * this.stats.vp);
+                if (isCrit) spawnText(t.x, t.y - 20, "CRIT!", "#e74c3c");
+                
+                // NỘI TẠI MAGGAZIC: Slow 50% trong 0.4s
+                if (this.heroKey === 'MAGGAZIC') {
+                     t.slowed = 0.4; // Biến slowed trong update() sẽ giảm 50% tốc chạy
+                     spawnText(t.x, t.y, "SLOW", "#5dade2");
+                }
+            }));
+        }
+    }
+
+    useSkill(slot) {
+        if (this.isDead || this.stunned > 0 || this.cooldowns[slot] > 0) return;
+        let enemy = (this.id === 1) ? game.p2 : game.p1;
+        let angleToEnemy = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+
+        if (this.heroKey === 'MASSU') {
+            if (slot === 0) { // Q
+                if (this.currMp < 30) return; this.currMp -= 30;
+                this.buffs.push({ type: 'range', val: 25, time: 5 });
+                this.buffs.push({ type: 'as_add', val: -0.3, time: 5 });
+                this.buffs.push({ type: 'dmg_add', val: 5 * this.level, time: 5 });
+                this.cooldowns[0] = 5;
+            } else if (slot === 1) { // E
+                if (this.currMp < 40) return; this.currMp -= 40;
+                let dmgVal = this.stats.dmg * 0.50;
+                [angleToEnemy, angleToEnemy - 0.26, angleToEnemy + 0.26].forEach(a => {
+                    game.projectiles.push(new Projectile(this, this.x, this.y, a, 700, 600, dmgVal, 'magic', t => { t.slowed = 3; if(this.stats.mvp>0) this.heal(dmgVal*this.stats.mvp); }));
+                });
+                this.cooldowns[1] = 7;
+            } else if (slot === 2) { // R
+                if (this.currMp < 60) return; this.currMp -= 60;
+                let dmgVal = 50 + this.stats.dmg;
+                game.projectiles.push(new Projectile(this, this.x, this.y, angleToEnemy, 900, 650, dmgVal, 'phys', t => {
+                    t.stunned = 0.5; t.x += Math.cos(angleToEnemy)*100; t.y += Math.sin(angleToEnemy)*100;
+                }));
+                this.cooldowns[2] = 15;
+            }
+        } else if (this.heroKey === 'BARION') {
+            if (slot === 0) { // Q: Tăng tốc chạy
+                if (this.currMp < 30) return; this.currMp -= 30;
+                this.buffs.push({ type: 'sp_mult', val: 0.5, time: 1.5, decay: true });
+                this.cooldowns[0] = 8;
+            } else if (slot === 1) { // E: Ném bom
+                if (this.currMp < 40) return; this.currMp -= 40;
+                let targetX = enemy.x, targetY = enemy.y;
+                // Tạo một hiệu ứng nổ sau 0.75s
+                setTimeout(() => {
+                    let dist = Math.hypot(this.x - targetX, this.y - targetY);
+                    // Hiển thị vùng nổ (tạm thời dùng spawnText hoặc vẽ trực tiếp nếu muốn phức tạp hơn)
+                    game.meteors.push({
+                        x: targetX, y: targetY, timer: 0.75, radius: 60, active: true,
+                        explode: function() {
+                            [game.p1, game.p2].forEach(p => {
+                                if (!p.isDead && Math.hypot(p.x - targetX, p.y - targetY) < 60) {
+                                    p.takeDamage(this.ownerDmg * 5, 'phys', this.owner);
+                                    p.slowed = 2; // Làm chậm
+                                }
+                            });
+                        },
+                        ownerDmg: this.stats.dmg, owner: this,
+                        update: function(dt) { this.timer -= dt; if(this.timer <= 0) { this.explode(); this.active = false; }},
+                        draw: function(ctx) {
+                            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                            ctx.fillStyle = "rgba(230, 126, 34, 0.5)"; ctx.fill();
+                        }
+                    });
+                }, 0);
+                this.cooldowns[1] = 10;
+            } else if (slot === 2) { // R: Mưa đạn
+                if (this.currMp < 60) return; this.currMp -= 60;
+                let count = 0;
+                this.buffs.push({ type: 'sp_mult', val: -0.5, time: 3 }); // Giảm 50% tốc chạy
+                let interval = setInterval(() => {
+                    if (count >= 9 || this.isDead) { clearInterval(interval); return; }
+                    let baseAngle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+                    for (let i = -3; i <= 3; i++) {
+                        let angle = baseAngle + (i * (30 * Math.PI / 180) / 7);
+                        game.projectiles.push(new Projectile(this, this.x, this.y, angle, 800, 600, this.stats.dmg, 'phys'));
+                    }
+                    count++;
+                }, 333); // 3s chia 9 lần ~ 333ms mỗi lần
+                this.cooldowns[2] = 20;
+            }
+        } 
+        
+        else if (this.heroKey === 'KOURTER') {
+            // Nội tại: Dùng Máu thay Mana. Buff hồi máu stack (cộng dồn) nhờ cơ chế buff array.
+            
+            if (slot === 0) { // Q: Lướt + Heal + Slow
+                let cost = this.currHp * 0.07; // 7% máu hiện tại
+                if (this.currHp <= cost + 10) return; // Không cho tự sát
+                this.currHp -= cost;
+
+                // Heal 8% máu tối đa trong 5s => 1.6% mỗi giây
+                this.buffs.push({ type: 'hhp_pct', val: 0.016, time: 5 });
+
+                // Tạo cầu gây sát thương (tượng trưng cho cú húc)
+                let dashDmg = this.stats.hp * 0.05;
+                game.projectiles.push(new Projectile(this, this.x, this.y, angleToEnemy, 500, 450, dashDmg, 'phys', t => {
+                    t.slowed = 5; // Slow 75% xử lý ở update (giảm speed base)
+                    // Ở đây ta set slow time là 5s, trong update logic slow giảm speed 50%, ta có thể chỉnh lại sau nếu muốn đúng 75%
+                    spawnText(t.x, t.y, "SLOW", "cyan");
+                }));
+
+                // Hiệu ứng lướt nhân vật (Đẩy nhân vật đi theo hướng skill)
+                let dashSpeed = 450; // Tốc độ lướt
+                let dashTime = 0.8; // Thời gian lướt
+                let dx = Math.cos(angleToEnemy) * dashSpeed;
+                let dy = Math.sin(angleToEnemy) * dashSpeed;
+                
+                // Dùng buff đặc biệt để đẩy nhân vật (hoặc dùng setInterval nhỏ để lướt mượt)
+                let dashInterval = setInterval(() => {
+                    if (this.isDead || this.stunned > 0) { clearInterval(dashInterval); return; }
+                    this.x += dx * 0.02; // 0.02 là dt xấp xỉ
+                    this.y += dy * 0.02;
+                    this.ensureUnstuck(); // Tránh kẹt tường
+                    dashTime -= 0.02;
+                    if (dashTime <= 0) clearInterval(dashInterval);
+                }, 20);
+
+                this.cooldowns[0] = 7;
+
+            } else if (slot === 1) { // E: Xoay Rìu
+                let cost = this.currHp * 0.10;
+                if (this.currHp <= cost + 10) return;
+                this.currHp -= cost;
+
+                // Heal 12% máu trong 5s => 2.4% mỗi giây
+                this.buffs.push({ type: 'hhp_pct', val: 0.024, time: 5 });
+
+                this.stunned = 0.3; // Khựng 0.3s
+                
+                // Sau 0.3s thì gây dmg
+                setTimeout(() => {
+                    if (this.isDead) return;
+                    if (this.heroKey === 'ZIKKAI' && !this.isDead && this.zikkaiStacks < 4) {
+                        this.zikkaiPassiveTimer += dt;
+                        if (this.zikkaiPassiveTimer >= 5) {
+                            this.zikkaiPassiveTimer = 0;
+                            this.zikkaiStacks++;
+                            spawnText(this.x, this.y, "+5% HP", "#48c9b0");
+                        }
+                    }
+                    let range = 100;
+                    let spinDmg = this.stats.hp * 0.07;
+                    let hasHit = false;
+                    
+                    // Kiểm tra địch trong tầm
+                    let target = (this.id === 1) ? game.p2 : game.p1;
+                    if (!target.isDead) {
+                        let dist = Math.hypot(this.x - target.x, this.y - target.y);
+                        if (dist <= range + target.baseStats.width/2) {
+                            target.takeDamage(spinDmg, 'phys', this);
+                            hasHit = true;
+                        }
+                    }
+                    
+                    // Vẽ hiệu ứng xoay (đơn giản là text hoặc vòng tròn vẽ trong draw nếu muốn update thêm)
+                    spawnText(this.x, this.y, "XOAY!", "#8e44ad");
+                }, 300);
+
+                this.cooldowns[1] = 5;
+
+            } else if (slot === 2) { // R: Hồi máu cực đại
+                let cost = this.currHp * 0.50; // 50% Máu hiện tại
+                if (this.currHp <= cost + 10) return;
+                this.currHp -= cost;
+
+                // Heal 2.5% máu mỗi giây trong 30s
+                this.buffs.push({ type: 'hhp_pct', val: 0.025, time: 30 });
+                
+                spawnText(this.x, this.y, "BẤT TỬ!", "green");
+                this.cooldowns[2] = 30;
+            }
+        }  else if (this.heroKey === 'ZIKKAI') {  // Skill zikkai
+            if (this.isZikkaiUlt) return; // Đang dùng ulti thì không dùng được chiêu khác
+
+            if (slot === 0) { // Q: Phóng cầu hình quạt & Thu về
+                if (this.currMp < 40) return; this.currMp -= 40;
+                let fanCount = 5;
+                let range = 250;
+                let speed = 600;
+                
+                // 1. Phóng ra
+                for (let i = -2; i <= 2; i++) {
+                    let angle = angleToEnemy + (i * 0.3); // Góc lệch nhau 0.3 radian
+                    let dmgOut = this.stats.mdmg * 0.5;
+                    
+                    // Tạo cầu bay đi
+                    game.projectiles.push(new Projectile(this, this.x, this.y, angle, speed, range, dmgOut, 'magic'));
+                }
+
+                // 2. Hút về (Sau khoảng thời gian cầu bay hết tầm: range/speed ~ 0.4s)
+                setTimeout(() => {
+                    if (this.isDead) return;
+                    for (let i = -2; i <= 2; i++) {
+                        let angle = angleToEnemy + (i * 0.3);
+                        // Tính vị trí điểm cuối của cầu
+                        let endX = this.x + Math.cos(angle) * range;
+                        let endY = this.y + Math.sin(angle) * range;
+                        
+                        // Tính góc bay ngược về tướng hiện tại
+                        let returnAngle = Math.atan2(this.y - endY, this.x - endX);
+                        let distToReturn = Math.hypot(this.x - endX, this.y - endY);
+                        let dmgIn = this.stats.mdmg * 0.25;
+
+                        game.projectiles.push(new Projectile(this, endX, endY, returnAngle, speed, distToReturn, dmgIn, 'magic', t => {
+                             // Logic đặc biệt: Cầu này tính sát thương khi chạm địch trên đường về
+                             // Nhưng code Projectile hiện tại chạm là nổ.
+                        }));
+                    }
+                }, 400);
+
+                this.cooldowns[0] = 6;
+
+            } else if (slot === 1) { // E: Xoay lưỡi hái
+                if (this.currMp < 50) return; this.currMp -= 50;
+                
+                this.stunned = 0.25; // Khựng bản thân
+                spawnText(this.x, this.y, "SLASH!", "#8e44ad");
+
+                setTimeout(() => {
+                    if (this.isDead) return;
+                    let dmgSpin = this.stats.mdmg * 2.0;
+                    let rangeSpin = 180; // Tầm xoay
+
+                    // Check trúng địch
+                    let enemy = (this.id === 1) ? game.p2 : game.p1;
+                    if (!enemy.isDead && Math.hypot(this.x - enemy.x, this.y - enemy.y) <= rangeSpin + enemy.baseStats.width/2) {
+                        enemy.takeDamage(dmgSpin, 'magic', this);
+                    }
+                    // Hiệu ứng visual (vẽ vòng tròn tạm)
+                    game.meteors.push({
+                        x: this.x, y: this.y, timer: 0.1, radius: rangeSpin, active: true,
+                        update: function(dt){ this.timer-=dt; if(this.timer<=0) this.active=false; },
+                        draw: function(ctx){ 
+                            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                            ctx.strokeStyle = "#48c9b0"; ctx.lineWidth=5; ctx.stroke();
+                        }
+                    });
+                }, 250);
+
+                this.cooldowns[1] = 8;
+
+            } else if (slot === 2) { // R: Hóa Hồn (Bất tử + Dame AOE)
+                if (this.currMp < 100) return; this.currMp -= 100;
+                
+                this.isZikkaiUlt = true;
+                let duration = 5;
+                let tickRate = 0.25;
+                let ticks = duration / tickRate; // 20 lần dame
+                let count = 0;
+
+                spawnText(this.x, this.y, "GHOST MODE!", "#fff");
+
+                let interval = setInterval(() => {
+                    if (this.isDead || count >= ticks) {
+                        clearInterval(interval);
+                        this.isZikkaiUlt = false; // Hết chiêu
+                        return;
+                    }
+                    
+                    // Gây dame xung quanh
+                    let aoeRange = 200;
+                    let dmgTick = this.stats.mdmg * 0.10;
+                    let enemy = (this.id === 1) ? game.p2 : game.p1;
+                    
+                    if (!enemy.isDead && Math.hypot(this.x - enemy.x, this.y - enemy.y) <= aoeRange) {
+                        enemy.takeDamage(dmgTick, 'magic', this);
+                        // Hồi máu 1%
+                        this.heal(this.stats.hp * 0.01);
+                        spawnText(this.x, this.y - 20, "+HP", "green");
+                    }
+                    
+                    // Hiệu ứng visual mỗi lần tick
+                    game.meteors.push({
+                         x: this.x, y: this.y, timer: 0.1, radius: aoeRange, active: true,
+                         update: function(dt){ this.x=this.owner.x; this.y=this.owner.y; this.timer-=dt; if(this.timer<=0) this.active=false; },
+                         owner: this,
+                         draw: function(ctx){ 
+                             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                             ctx.fillStyle = "rgba(72, 201, 176, 0.2)"; ctx.fill();
+                         }
+                    });
+
+                    count++;
+                }, tickRate * 1000);
+
+                this.cooldowns[2] = 25;
+            }
+        } 
+        else if (this.heroKey === 'MAGGAZIC') {
+            let enemy = (this.id === 1) ? game.p2 : game.p1;
+            let angleToEnemy = Math.atan2(enemy.y - this.y, enemy.x - this.x); 
+
+            if (slot === 0) { 
+                if (this.currMp < 40) return; this.currMp -= 40;
+                
+                let skillDmg = this.stats.dmg * 1.5 + this.stats.mdmg * 0.8; 
+
+                let wave = {
+                    owner: this, x: this.x, y: this.y,
+                    vx: Math.cos(angleToEnemy) * 450, vy: Math.sin(angleToEnemy) * 450,
+                    angle: angleToEnemy,
+                    dist: 0, maxDist: 900, size: 20,
+                    dmg: skillDmg, active: true, hitList: [],
+                    
+                    update: function(dt) {
+                        this.x += this.vx * dt; this.y += this.vy * dt;
+                        this.dist += 450 * dt;
+                        this.size += 60 * dt; 
+                        if(this.dist >= this.maxDist) this.active = false;
+
+                        let t = (this.owner.id === 1) ? game.p2 : game.p1;
+                        if (!t.isDead && !this.hitList.includes(t.id)) {
+                            let enemyWidth = t.width || 40; 
+                            if (Math.hypot(this.x - t.x, this.y - t.y) < this.size + enemyWidth/2) {
+                                t.takeDamage(this.dmg, 'magic', this.owner);
+                                spawnText(t.x, t.y, "WAVE", "#d980fa");
+                                this.hitList.push(t.id);
+                            }
+                        }
+                    },
+                    draw: function(ctx) {
+                        ctx.strokeStyle = '#d980fa'; ctx.lineWidth = 4;
+                        ctx.beginPath(); 
+                        ctx.arc(this.x, this.y, this.size, this.angle - 1, this.angle + 1);
+                        ctx.stroke();
+                    }
+                };
+                game.projectiles.push(wave);
+                this.cooldowns[0] = 6;
+
+            } else if (slot === 1) { 
+                // --- CHIÊU E: ĐẨY LÙI ---
+                if (this.currMp < 50) return; this.currMp -= 50;
+                
+                let skillDmg = this.stats.mdmg * 1.2;
+
+                game.projectiles.push(new Projectile(this, this.x, this.y, angleToEnemy, 1100, 800, skillDmg, 'magic', t => {
+                    spawnText(t.x, t.y, "ĐẨY!", "#fff");
+                    let pushDist = 150;
+                    t.x += Math.cos(angleToEnemy) * pushDist;
+                    t.y += Math.sin(angleToEnemy) * pushDist;
+                    // Kiểm tra nếu hàm ensureUnstuck tồn tại mới gọi để tránh lỗi
+                    if(typeof t.ensureUnstuck === 'function') t.ensureUnstuck(); 
+                }));
+                this.cooldowns[1] = 8;
+
+            } else if (slot === 2) { 
+                // --- CHIÊU R: ĐẠI NHẠC HỘI ---
+                if (this.currMp < 100) return; this.currMp -= 100;
+                
+                let range = 400; 
+                let skillDmg = this.stats.dmg * 2.0 + this.stats.mdmg * 2.5; 
+
+                game.meteors.push({
+                    x: this.x, y: this.y, timer: 0.5, radius: range, active: true,
+                    update: function(dt){ this.timer-=dt; if(this.timer<=0) this.active=false; },
+                    draw: function(ctx) {
+                        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                        ctx.fillStyle = "rgba(217, 128, 250, 0.2)"; ctx.fill();
+                        ctx.lineWidth = 5; ctx.strokeStyle = "#d980fa"; ctx.stroke();
+                    }
+                });
+                spawnText(this.x, this.y, "BOOM!", "#d980fa");
+
+                let t = (this.id === 1) ? game.p2 : game.p1;
+                let enemyWidth = t.width || 40; // An toàn
+                let dist = Math.hypot(this.x - t.x, this.y - t.y);
+                if (dist <= range + enemyWidth/2) {
+                    t.takeDamage(skillDmg, 'magic', this);
+                    t.stunned = 1.0; 
+                }
+                this.cooldowns[2] = 25;
+            }
+        }
+
+
+        if (slot === 3) {
+            let sName = (this.id === 1) ? game.p1Spell : game.p2Spell;
+            let sData = SPELLS[sName];
+            if (sData.type === 'heal') {
+                this.heal(this.stats.hp * 0.15); spawnText(this.x, this.y, "+HP", "green");
+            } else if (sData.type === 'flash') {
+                let dx = 0, dy = 0;
+                if (this.keys.up) dy -= 1;
+                if (this.keys.down) dy += 1;
+                if (this.keys.left) dx -= 1;
+                if (this.keys.right) dx += 1;
+                let flashAngle = (dx===0 && dy===0) ? angleToEnemy : Math.atan2(dy, dx);
+                
+                this.x += Math.cos(flashAngle) * 200;
+                this.y += Math.sin(flashAngle) * 200;
+                
+                // Immediately fix if stuck in wall after flash
+                this.ensureUnstuck();
+                spawnText(this.x, this.y, "FLASH!", "cyan");
+            } else if (sData.type === 'shield') {
+                let missingHp = this.stats.hp - this.currHp;
+                // Công thức: Level * 10 + 30% Máu đã mất
+                let shieldAmt = (this.level * 10) + (missingHp * 0.3);
+        
+                this.shield = shieldAmt; 
+                this.shieldTimer = 5; // Tồn tại 5 giây
+        
+                spawnText(this.x, this.y, "+GIÁP", "white");
+            }
+            this.cooldowns[3] = sData.cd;
+        }
+        
+    }
+    
+
+    takeDamage(raw, type, source) {
+        if (this.isDead) return;
+        if (this.isZikkaiUlt) return;
+
+        let actual = raw;
+        if (type === 'phys') {
+            actual = raw * (1 - Math.min(0.99, this.stats.arm/100));
+        } else if (type === 'magic') {
+            actual = raw * (1 - Math.min(0.99, this.stats.marm/100));
+        } 
+    
+        // --- LOGIC MÁU ẢO MỚI ---
+        if (this.shield > 0) {
+            if (this.shield >= actual) {
+                this.shield -= actual;
+                spawnText(this.x, this.y - 30, "CHẶN", "#fff"); // Báo chặn sát thương
+                actual = 0; // Sát thương đã bị khiên chặn hết
+            } else {
+                actual -= this.shield;
+                this.shield = 0;
+            }
+        }
+        // -----------------------
+
+        this.currHp -= actual;
+    
+        // Chỉ hiện số damage nếu sát thương thực > 0
+        if (actual > 0) {
+            let color = (type==='phys'?'#fff':(type==='magic'?'#af7ac5':'#e74c3c'));
+            spawnText(this.x, this.y - 15, Math.floor(actual), color);
+        }
+    
+        if (this.currHp <= 0) {
+            let killer = null;
+            if (source.id === 'meteor') {
+                killer = (this.id === 1) ? game.p2 : game.p1;
+                spawnText(this.x, this.y, "METEOR KILL!", "red");
+            } else if (source instanceof Player) {
+                killer = source;
+            }
+            this.die(killer);
+        }
+    }
+    die(killer) {
+        this.currHp = 0;
+        this.isDead = true;
+        this.respawnTimer = RESPAWN_TIME;
+        if (killer) {
+            killer.score += 1;
+            game.updateScores();
+        }
+        document.getElementById((this.id===1)?'p1-death':'p2-death').style.display = 'block';
+    }
+
+    respawn() {
+        this.isDead = false;
+        this.currHp = this.stats.hp;
+        this.currMp = this.stats.m;
+        this.x = this.startX;
+        this.y = this.startY;
+        this.cooldowns = [0,0,0,0];
+        this.buffs = [];
+        this.stunned = 0;
+        this.slowed = 0;
+        document.getElementById((this.id===1)?'p1-death':'p2-death').style.display = 'none';
+        spawnText(this.x, this.y, "HỒI SINH!", "#2ecc71");
+    }
+
+    heal(v) { this.currHp = Math.min(this.stats.hp, this.currHp + v); }
+    
+    draw(ctx) {
+        if (this.isDead) return;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = this.stats.color;
+        ctx.beginPath(); ctx.arc(0,0,15,0,Math.PI*2); ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = (this.id===1)?'cyan':'coral'; ctx.stroke();
+        
+        let enemy = (this.id === 1) ? game.p2 : game.p1;
+        if (!enemy.isDead) {
+            let a = Math.atan2(enemy.y - this.y, enemy.x - this.x);
+            ctx.rotate(a);
+            ctx.fillStyle = 'white'; ctx.fillRect(10,-2,10,4);
+        }
+        ctx.restore();
+    }
+}
+
+// --- GAME ENGINE ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = CANVAS_W; canvas.height = CANVAS_H;
+
+let game = {
+    state: 'SELECT',
+    step: 0,
+    p1Hero: 'MASSU', p1Spell: 'HOIMAU',
+    p2Hero: 'MASSU', p2Spell: 'HOIMAU',
+    p1: null, p2: null,
+    startTime: 0, elapsed: 0,
+    projectiles: [], orbs: [], meteors: [],
+    healthPacks: [],
+    meteorTimer: 0,
+
+    init: function() { this.renderSelection(); },
+    
+    startGame: function() {
+        document.getElementById('selection-screen').style.display = 'none';
+        document.getElementById('hud').style.display = 'block';
+        this.p1 = new Player(1, this.p1Hero, this.p1Spell, 80, CANVAS_H/2);
+        this.p2 = new Player(2, this.p2Hero, this.p2Spell, CANVAS_W - 80, CANVAS_H/2);
+        this.state = 'PLAY';
+        this.startTime = Date.now();
+        requestAnimationFrame(loop);
+    },
+
+    updateScores: function() {
+        document.getElementById('p1-score').innerText = this.p1.score;
+        document.getElementById('p2-score').innerText = this.p2.score;
+    },
+
+    checkWin: function() {
+        let msg = "";
+        if (this.p1.score > this.p2.score) msg = "NGƯỜI CHƠI 1 THẮNG CUỘC!";
+        else if (this.p2.score > this.p1.score) msg = "NGƯỜI CHƠI 2 THẮNG CUỘC!";
+        else msg = "HÒA!";
+        alert("HẾT GIỜ! \n" + msg);
+        location.reload();
+    }
+};
+
+window.addEventListener('keydown', e => {
+    if (game.state !== 'PLAY') return;
+    let k = e.key.toLowerCase();
+    if (k === 'w') game.p1.keys.up = true;
+    if (k === 's') game.p1.keys.down = true;
+    if (k === 'a') game.p1.keys.left = true;
+    if (k === 'd') game.p1.keys.right = true;
+    if (k === 'q') game.p1.useSkill(0);
+    if (k === 'e') game.p1.useSkill(1);
+    if (k === 'r') game.p1.useSkill(2);
+    if (k === ' ') game.p1.useSkill(3);
+
+    if (e.key === 'ArrowUp') game.p2.keys.up = true;
+    if (e.key === 'ArrowDown') game.p2.keys.down = true;
+    if (e.key === 'ArrowLeft') game.p2.keys.left = true;
+    if (e.key === 'ArrowRight') game.p2.keys.right = true;
+    if (k === '1' || e.code === 'Numpad1') game.p2.useSkill(0);
+    if (k === '2' || e.code === 'Numpad2') game.p2.useSkill(1);
+    if (k === '3' || e.code === 'Numpad3') game.p2.useSkill(2);
+    if (k === '0' || e.code === 'Numpad0') game.p2.useSkill(3);
+});
+
+window.addEventListener('keyup', e => {
+    let k = e.key.toLowerCase();
+    if (k === 'w') game.p1.keys.up = false;
+    if (k === 's') game.p1.keys.down = false;
+    if (k === 'a') game.p1.keys.left = false;
+    if (k === 'd') game.p1.keys.right = false;
+    if (e.key === 'ArrowUp') game.p2.keys.up = false;
+    if (e.key === 'ArrowDown') game.p2.keys.down = false;
+    if (e.key === 'ArrowLeft') game.p2.keys.left = false;
+    if (e.key === 'ArrowRight') game.p2.keys.right = false;
+});
+
+game.renderSelection = function() {
+    let c = document.getElementById('options-container');
+    c.innerHTML = '';
+    let titles = ["P1 Chọn Tướng", "P1 Chọn Phụ Trợ", "P2 Chọn Tướng", "P2 Chọn Phụ Trợ"];
+    document.getElementById('step-desc').innerText = titles[this.step];
+    let list = (this.step % 2 === 0) ? HEROES : SPELLS;
+    for (let k in list) {
+        let b = document.createElement('div');
+        b.className = 'select-btn';
+        b.innerText = list[k].name;
+        b.onclick = () => {
+            if(this.step===0) this.p1Hero=k; else if(this.step===1) this.p1Spell=k;
+            else if(this.step===2) this.p2Hero=k; else this.p2Spell=k;
+            this.step++;
+            if(this.step>3) this.startGame(); else this.renderSelection();
+        };
+        c.appendChild(b);
+    }
+};
+
+let lastTime = 0;
+function loop(timestamp) {
+    if (game.state !== 'PLAY') return;
+    let dt = (timestamp - lastTime) / 1000;
+    lastTime = timestamp;
+    if (dt > 0.1) dt = 0.1;
+    game.elapsed += dt;
+
+    let timeLeft = Math.max(0, MAX_GAME_TIME - game.elapsed);
+    let mins = Math.floor(timeLeft / 60);
+    let secs = Math.floor(timeLeft % 60);
+    document.getElementById('game-timer').innerText = `0${mins}:${secs<10?'0':''}${secs}`;
+    if (timeLeft <= 0) { game.checkWin(); return; }
+
+    // Logic
+    spawnExpOrbs();
+
+    spawnHealthPack(); // Gọi hàm sinh máu
+    
+    game.healthPacks.forEach((hp, index) => {
+        [game.p1, game.p2].forEach(p => {
+            if (!p.isDead && Math.hypot(p.x - hp.x, p.y - hp.y) < 35) { // Tầm nhặt 35
+                // Công thức: 100 + (25 * Lv) + (0.03 * Máu đã mất)
+                let missingHp = p.stats.hp - p.currHp;
+                let healAmt = 100 + (25 * p.level) + (0.03 * missingHp);
+                
+                p.heal(healAmt);
+                spawnText(p.x, p.y - 40, "+" + Math.floor(healAmt), "#2ecc71");
+                spawnText(p.x, p.y - 60, "♥", "red");
+                
+                // Xóa hộp máu sau khi ăn
+                game.healthPacks.splice(index, 1);
+            }
+        });
+    });
+    // Meteor Spawner
+    game.meteorTimer += dt;
+    if (game.meteorTimer >= 3) { // 3s
+        game.meteors.push(new Meteor());
+        game.meteorTimer = 0;
+    }
+    
+    game.p1.update(dt); game.p1.attack();
+    game.p2.update(dt); game.p2.attack();
+    
+    game.projectiles.forEach(p => p.update(dt));
+    game.projectiles = game.projectiles.filter(p => p.active);
+
+    game.meteors.forEach(m => m.update(dt));
+    game.meteors = game.meteors.filter(m => m.active);
+
+    game.orbs.forEach((o, i) => {
+        [game.p1, game.p2].forEach(p => {
+            if (!p.isDead && Math.hypot(p.x - o.x, p.y - o.y) < 30) {
+                p.addExp(o.val); spawnText(p.x, p.y - 30, "+" + o.val, o.color); game.orbs.splice(i, 1);
+            }
+        });
+    });
+
+    // RENDER
+    ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+    ctx.strokeStyle = '#3a4a35'; ctx.lineWidth = 1;
+    for(let i=0; i<CANVAS_W; i+=50) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,CANVAS_H); ctx.stroke(); }
+    for(let i=0; i<CANVAS_H; i+=50) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(CANVAS_W,i); ctx.stroke(); }
+
+    // Draw Walls
+    ctx.fillStyle = '#555'; ctx.strokeStyle = '#777'; ctx.lineWidth = 2;
+    for(let w of WALLS) { ctx.fillRect(w.x, w.y, w.w, w.h); ctx.strokeRect(w.x, w.y, w.w, w.h); }
+
+    game.orbs.forEach(o => { ctx.beginPath(); ctx.arc(o.x,o.y,o.radius,0,Math.PI*2); ctx.fillStyle=o.color; ctx.fill(); });
+    game.healthPacks.forEach(hp => {
+        // Vẽ hộp nền xanh lá
+        ctx.fillStyle = '#27ae60'; 
+        ctx.fillRect(hp.x - 12, hp.y - 12, 24, 24);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(hp.x - 12, hp.y - 12, 24, 24);
+        
+        // Vẽ chữ thập trắng (Hội chữ thập đỏ)
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(hp.x - 4, hp.y - 8, 8, 16); // Dọc
+        ctx.fillRect(hp.x - 8, hp.y - 4, 16, 8); // Ngang
+    });
+    game.meteors.forEach(m => m.draw(ctx));
+    game.p1.draw(ctx);
+    game.p2.draw(ctx);
+    game.projectiles.forEach(p => p.draw(ctx));
+
+    updateHUD();
+    requestAnimationFrame(loop);
+}
+
+function spawnExpOrbs() {
+    if (Math.random() < 0.02) {
+        let tier = 0;
+        if (game.elapsed > 300) tier=4; else if (game.elapsed > 240) tier=3;
+        else if (game.elapsed > 180) tier=2; else if (game.elapsed > 120) tier=1;
+        let data = EXP_SPAWNS[Math.floor(Math.random() * (tier + 1))];
+        
+        let x, y, valid=false;
+        for(let k=0; k<5; k++) {
+            x = 50 + Math.random() * (CANVAS_W-100);
+            y = 50 + Math.random() * (CANVAS_H-100);
+            valid = true;
+            for(let w of WALLS) { if (x > w.x - 20 && x < w.x+w.w+20 && y > w.y - 20 && y < w.y+w.h+20) valid=false; }
+            if(valid) break;
+        }
+        if(valid) game.orbs.push({x:x, y:y, val:data.val, color:data.color, radius:data.radius});
+    }
+}
+
+function spawnText(x, y, txt, col) {
+    let e = document.createElement('div');
+    e.className = 'floating-text';
+    e.style.left = (canvas.getBoundingClientRect().left + x) + 'px';
+    e.style.top = (canvas.getBoundingClientRect().top + y) + 'px';
+    e.innerText = txt; e.style.color = col;
+    document.body.appendChild(e);
+    setTimeout(()=>e.remove(), 800);
+}
+
+function updateHUD() {
+    function u(p, pf) {
+        document.getElementById(pf+'-lv').innerText = p.level;
+        document.getElementById(pf+'-hp').style.width = (p.currHp/p.stats.hp*100)+'%';
+        document.getElementById(pf+'-shield').style.width = (p.shield/p.stats.hp*100)+'%';
+        document.getElementById(pf+'-hp-text').innerText = Math.ceil(p.currHp)+'/'+Math.ceil(p.stats.hp);
+        document.getElementById(pf+'-mp').style.width = (p.currMp/p.stats.m*100)+'%';
+        document.getElementById(pf+'-mp-text').innerText = Math.ceil(p.currMp)+'/'+Math.ceil(p.stats.m);
+        document.getElementById(pf+'-xp').style.width = (p.level===15)?'100%':(p.currExp/p.nextLvExp*100)+'%';
+        if (p.isDead) document.getElementById(pf+'-respawn-time').innerText = Math.ceil(p.respawnTimer);
+
+        for(let i=0; i<4; i++) {
+            let el = document.getElementById(pf+'-cd-'+i);
+            if (p.cooldowns[i]>0) { el.style.display='flex'; el.innerText=Math.ceil(p.cooldowns[i]); }
+            else el.style.display='none';
+        }
+
+        // --- STATS PANEL ---
+        let s = p.stats;
+        let leftT = `DMG: ${Math.floor(s.dmg)}<br>MDMG: ${Math.floor(s.mdmg)}<br>ARM: ${Math.floor(s.arm)}<br>MARM: ${Math.floor(s.marm)}`;
+        let rightT = `AS: ${s.as.toFixed(2)}<br>CRIT: ${s.cr}%<br>VP: ${(s.vp*100).toFixed(0)}%<br>MVP: ${(s.mvp*100).toFixed(0)}%`;
+        document.getElementById(pf+'-stats-left').innerHTML = leftT;
+        document.getElementById(pf+'-stats-right').innerHTML = rightT;
+    }
+    u(game.p1, 'p1');
+    u(game.p2, 'p2');
+}
+
+function spawnHealthPack() {
+    // 1. Kiểm tra tối đa 2 hộp
+    if (game.healthPacks.length >= 2) return;
+
+    // 2. Tỷ lệ spawn hiếm (0.05% mỗi khung hình ~ khoảng 3 giây check 1 lần)
+    // Bạn có thể chỉnh số 0.0005 nhỏ hơn để hiếm hơn nữa
+    if (Math.random() < 0.002) { 
+        let x, y, valid = false;
+        // Tìm vị trí không dính tường (thử 10 lần)
+        for(let k=0; k<10; k++) {
+            x = 50 + Math.random() * (CANVAS_W-100);
+            y = 50 + Math.random() * (CANVAS_H-100);
+            valid = true;
+            for(let w of WALLS) { 
+                if (x > w.x - 30 && x < w.x+w.w+30 && y > w.y - 30 && y < w.y+w.h+30) valid=false; 
+            }
+            if(valid) break;
+        }
+        
+        if(valid) {
+            game.healthPacks.push({ x: x, y: y, radius: 15 });
+            spawnText(x, y, "HP SPAWN", "#2ecc71"); // Thông báo có máu
+        }
+    }
+}
+game.init();
+</script>
+</body>
+</html>

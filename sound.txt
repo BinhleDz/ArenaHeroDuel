@@ -1,0 +1,31 @@
+tạo âm thanh cho tướng kid (assets/sounds/sound_skill/kid/tên.ogg) tên :
+basic_cast : kích hoạt khi đánh thường
+basic_hit : kích hoạt đánh thường trúng địch
+c1_cast : khích hoạt khi dùng chiêu 1
+c1_spawn : kích hoạt khi chim bồ câu ở chiêu 1 được spawn
+c1_hit : chim bồ câu trúng địch
+c2_cast : kích hoạt mỗi 1 lá bài ở chiêu 2 được bắn ra
+c2_hit : mỗi lá bài trúng địch
+c3_cast : kích hoạt chiêu 3 
+c3_exist : đang bay bằng chiêu 3 
+
+tạo âm thanh cho tướng kid2 (assets/sounds/sound_skill/kid2/tên.ogg) tên :
+basic_cast : đánh thường
+basic_hit : đánh thường trúng địch
+chiêu 1 : dùng luôn âm thanh chiêu 3 của kid cả khi kích hoạt và khi đang bay
+c2_cast : kích hoạt chiêu
+c2_explosion : đạn phát nổ (trúng đất/ địch)
+c3_punk : 35% phát âm nếu đạn được tạo ra từ c3
+
+
+tạo âm thanh cho tướng mario (assets/sounds/sound_skill/mario/tên.ogg) tên :
+basic_cast : đánh thường
+basic_sound : đánh thường nhưng chỉ có tỉ lệ phát ra là 15% và đồng thời với basic_cast
+basic_hit : đánh thường trúng địch
+c1_cast : dùng chiêu 1
+c2_cast : dùng chiêu 2
+c2_explosion : khi chiêu 2 phát nổ
+c3_spawn : khi dùng chiêu 3
+c3_shoot : khi rồng bắn đạn
+
+

@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Towtank - Vô Hạn Chiến (Bản cập nhật Công trình Siêu Cấp)</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            width: 1000px;
+            height: 600px;
+            background-color: #34495e;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        .hud-panel {
+            position: absolute;
+            top: 10px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            pointer-events: auto;
+        }
+        #resource-panel { left: 10px; }
+        #wave-panel { right: 10px; text-align: right; }
+        
+        #action-menu {
+            position: absolute;
+            background: rgba(44, 62, 80, 0.95);
+            border: 2px solid #f1c40f;
+            border-radius: 8px;
+            padding: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: auto;
+            z-index: 10;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+        #action-menu::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            margin-left: -10px;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: #f1c40f transparent transparent transparent;
+        }
+        .menu-btn {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: background 0.2s;
+            text-align: left;
+        }
+        .menu-btn:hover { background: #3498db; }
+        .menu-btn:disabled { background: #7f8c8d; cursor: not-allowed; }
+        .menu-btn .cost { color: #f1c40f; float: right; margin-left: 10px; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #e74c3c; }
+
+        #gold-mine-btn {
+            position: absolute;
+            background: #f39c12;
+            color: white;
+            border: 2px solid #d35400;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            transform: translateX(-50%);
+        }
+        #gold-mine-btn:hover { background: #e67e22; }
+        
+        #spell-panel {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+        .spell-btn {
+            background: #2c3e50;
+            color: white;
+            border: 2px solid #34495e;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+            width: 130px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .spell-btn:hover { border-color: #f1c40f; }
+        .spell-btn:disabled { opacity: 0.6; cursor: not-allowed; border-color: #34495e; }
+        .spell-btn .cost { color: #f1c40f; display: block; font-size: 13px; margin-top: 5px; }
+        .spell-btn .cd-overlay {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0, 0, 0, 0.7);
+            height: 0%;
+            transition: height 0.1s linear;
+        }
+        #btn-spell-heal { border-color: #2ecc71; }
+        #btn-spell-push { border-color: #e67e22; }
+        #btn-spell-missile { border-color: #e74c3c; }
+        #btn-spell-freeze { border-color: #3498db; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="1000" height="600"></canvas>
+    
+    <div id="ui-layer">
+        <div id="resource-panel" class="hud-panel">
+            <h3 style="margin:0; color:#f1c40f;">Vàng: <span id="gold-display">150</span></h3>
+            <p style="margin:5px 0 0 0; font-size: 14px;">Mỏ vàng Lv: <span id="mine-lv">1</span> (<span id="mine-rate">1</span> vàng/2s)</p>
+        </div>
+        
+        <div id="wave-panel" class="hud-panel">
+            <h3 style="margin:0; color:#e74c3c;">Vô Hạn Chiến</h3>
+            <p style="margin:5px 0 0 0; font-size: 14px;">Thời gian: <span id="time-display">0:00</span></p>
+            <p style="margin:5px 0 0 0; font-size: 14px; color:#bdc3c7;" id="spawn-status">Quái vật xuất hiện sau 25s</p>
+        </div>
+
+        <button id="gold-mine-btn">Nâng cấp (50v)</button>
+        
+        <div id="action-menu"></div>
+        <div id="spell-panel">
+            <button class="spell-btn" id="btn-spell-heal">
+                <span style="position:relative; z-index:1">Heal<br><span class="cost">2500v</span></span>
+                <div class="cd-overlay" id="cd-heal"></div>
+            </button>
+            <button class="spell-btn" id="btn-spell-push">
+                <span style="position:relative; z-index:1">Đẩy lùi<br><span class="cost">500v</span></span>
+                <div class="cd-overlay" id="cd-push"></div>
+            </button>
+            <button class="spell-btn" id="btn-spell-missile">
+                <span style="position:relative; z-index:1">Mưa tên lửa<br><span class="cost">125v</span></span>
+                <div class="cd-overlay" id="cd-missile"></div>
+            </button>
+            <button class="spell-btn" id="btn-spell-freeze">
+                <span style="position:relative; z-index:1">Băng hà<br><span class="cost">50v</span></span>
+                <div class="cd-overlay" id="cd-freeze"></div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+const CONFIG = {
+    startGold: 250,
+    fps: 60,
+    goldMine: {
+        x: 60, y: 520, width: 80, height: 60,
+        interval: 1000, 
+        getBaseRate: (lv) => Math.pow(2, lv - 1), 
+        getUpgradeCost: (lv) => 25 * Math.pow(2, lv) 
+    },
+    towers: {
+        'THAP_NO': { name: 'Tháp nỏ', cost: 90, maxLv: 5, baseDmg: 200, dmgPerLv: 50, baseAs: 2.0, range: 180, rangePerLv: 15, upgCost: 50, evolvesTo: ['SUNG'], color: '#8e44ad', projColor: '#ecf0f1' },
+        'SUNG': { name: 'Súng', cost: 250, maxLv: 5, baseDmg: 500, dmgPerLv: 80, baseAs: 1.5, range: 270, rangePerLv: 15, upgCost: 100, evolvesTo: ['SNIPER', 'MINIGUN'], color: '#2980b9', projColor: '#f1c40f' },
+        'SNIPER': { name: 'Sniper', cost: 500, maxLv: 1, baseDmg: 3000, dmgPerLv: 0, baseAs: 5.0, range: 9999, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#c0392b', projColor: '#e74c3c' },
+        'MINIGUN': { name: 'Minigun', cost: 500, maxLv: 1, baseDmg: 175, dmgPerLv: 0, baseAs: 0.25, range: 360, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#16a085', projColor: '#1abc9c' },
+        'THAP_DA': { name: 'Tháp đá', cost: 150, maxLv: 5, baseDmg: 420, dmgPerLv: 12, baseAs: 2.5, range: 150, rangePerLv: 11, upgCost: 62, evolvesTo: ['THAP_PHAO'], color: '#7f8c8d', projColor: '#95a5a6', aoeRadius: 40 },
+        'THAP_PHAO': { name: 'Tháp pháo', cost: 375, maxLv: 5, baseDmg: 560, dmgPerLv: 15, baseAs: 2.5, range: 210, rangePerLv: 11, upgCost: 125, evolvesTo: ['TEN_LUA', 'PHAO_DOI'], color: '#34495e', projColor: '#e67e22', aoeRadius: 80 },
+        'TEN_LUA': { name: 'Tên lửa', cost: 750, maxLv: 1, baseDmg: 1500, dmgPerLv: 0, baseAs: 5.0, range: 9999, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#e74c3c', projColor: 'transparent', aoeRadius: 150, targetLast: true, delayStrike: 1500 },
+        'PHAO_DOI': { name: 'Pháo đôi', cost: 650, maxLv: 1, baseDmg: 710, dmgPerLv: 0, baseAs: 1.0, range: 260, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#d35400', projColor: '#f39c12', aoeRadius: 80 },
+        'TEN_LUA_SIEU_THANH': { name: 'TL Siêu Thanh', cost: 3500, maxLv: 1, baseDmg: 1750, dmgPerLv: 0, baseAs: 1.0, range: 9999, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#ff00ff', projColor: 'transparent', aoeRadius: 150, targetLast: true, delayStrike: 500, special: 'breakdown' },
+        'SUNG_NANG_LUONG': { name: 'Súng Năng Lượng', cost: 3500, maxLv: 1, baseDmg: 4500, dmgPerLv: 0, baseAs: 1.5, range: 9999, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#00ffff', projColor: '#00ffff', targetHighestHp: true },
+        'PHAO_PHAN_VAT_CHAT': { name: 'Pháo PV.Chất', cost: 3500, maxLv: 1, baseDmg: 10000, dmgPerLv: 0, baseAs: 3.0, range: 9999, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#f1c40f', projColor: '#f39c12' },
+        'THO_SUA_CHUA': { name: 'Thợ sửa chữa', cost: 3500, maxLv: 1, baseDmg: 0, dmgPerLv: 0, baseAs: 10.0, range: 0, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#2ecc71', projColor: 'transparent', special: 'heal_wall' },
+        'SAN_BAY': { name: 'Sân bay', cost: 3500, maxLv: 1, baseDmg: 1900, dmgPerLv: 0, baseAs: 8.0, range: 9999, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#bdc3c7', projColor: 'transparent', special: 'carpet_bomb', aoeRadius: 100 },
+        // --- CỘT ĐIỆN ---
+        'COT_DIEN': { name: 'Cột điện', cost: 100, maxLv: 5, baseDmg: 350, dmgPerLv: 75, baseAs: 5.0, range: 200, rangePerLv: 0, upgCost: 10, evolvesTo: ['TRU_NANG_LUONG'], color: '#f1c40f', projColor: '#f39c12' },
+        'TRU_NANG_LUONG': { name: 'Trụ N.Lượng', cost: 750, maxLv: 5, baseDmg: 750, dmgPerLv: 75, baseAs: 4.0, range: 200, rangePerLv: 0, upgCost: 50, evolvesTo: ['PHAO_DAI_NANG_LUONG', 'COT_THU_LOI'], color: '#f39c12', projColor: '#e67e22' },
+        'PHAO_DAI_NANG_LUONG': { name: 'P.Đài N.Lượng', cost: 1000, maxLv: 1, baseDmg: 1125, dmgPerLv: 0, baseAs: 4.0, range: 200, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#e67e22', projColor: '#d35400', special: 'stun_aoe', aoeRadius: 100 },
+        'COT_THU_LOI': { name: 'Cột thu lôi', cost: 1000, maxLv: 1, baseDmg: 750, dmgPerLv: 0, baseAs: 2.0, range: 150, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#d35400', projColor: 'transparent', special: 'auto_aoe' },
+        // --- THÁP TUYẾT ---
+        'THAP_TUYET': { name: 'Tháp tuyết', cost: 120, maxLv: 5, baseDmg: 30, dmgPerLv: 10, baseAs: 1.0, range: 180, rangePerLv: 5, upgCost: 15, evolvesTo: ['SUNG_CAU_TUYET'], color: '#aed6f1', projColor: '#ebf5fb', special: 'slow_20' },
+        'SUNG_CAU_TUYET': { name: 'Súng C.Tuyết', cost: 350, maxLv: 5, baseDmg: 60, dmgPerLv: 15, baseAs: 1.0, range: 180, rangePerLv: 5, upgCost: 30, evolvesTo: ['SUNG_BANG', 'MUA_TUYET'], color: '#5dade2', projColor: '#d6eaf8', special: 'slow_40' },
+        'SUNG_BANG': { name: 'Súng băng', cost: 800, maxLv: 1, baseDmg: 100, dmgPerLv: 0, baseAs: 1.0, range: 200, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#3498db', projColor: '#85c1e9', special: 'freeze_3' },
+        'MUA_TUYET': { name: 'Mưa tuyết', cost: 800, maxLv: 1, baseDmg: 40, dmgPerLv: 0, baseAs: 0.25, range: 200, rangePerLv: 0, upgCost: 0, evolvesTo: [], color: '#2e86c1', projColor: '#5dade2', special: 'slow_50' }
+    },
+    traps: {
+        'WEB': { name: 'Bẫy tơ', cost: 100, upgCost: 10, maxLv: 10, baseCd: 7000, cdPerLv: 100, duration: 3000, baseRadius: 60, radiusPerLv: 5, slowPercent: 0.9, color: '#ecf0f1' },
+        'FREEZE': { name: 'Bẫy đông lạnh', cost: 100, upgCost: 10, maxLv: 10, baseCd: 10000, cdPerLv: 0, duration: 1000, triggerRadius: 25, color: '#3498db' }
+    },
+    heroes: {
+        'KIEM_SI': { name: 'Kiếm sĩ', cost: 1000, baseUpg: 200, incUpg: 50, cd: 10000, color: '#e67e22' },
+        'PHAP_SU': { name: 'Pháp sư', cost: 1000, baseUpg: 200, incUpg: 50, cd: 10000, color: '#9b59b6' },
+        'NO_THAN': { name: 'Nỏ thần', cost: 1000, baseUpg: 200, incUpg: 50, cd: 5000, color: '#f1c40f' },
+        'TU_LANH': { name: 'Tủ lạnh', cost: 1000, baseUpg: 200, incUpg: 50, maxLv: 24, color: '#00ffff' }
+    },
+    walls: [
+        { id: 1, x: 350, hp: 10000, maxHp: 20000, slots: 3, superSlots: 0, color: '#7f8c8d' },
+        { id: 2, x: 220, hp: 25000, maxHp: 50000, slots: 4, superSlots: 1, color: '#95a5a6' },
+        { id: 3, x: 90,  hp: 50000, maxHp: 100000, slots: 5, superSlots: 2, color: '#bdc3c7' }
+    ],
+    enemies: {
+        'ZOMBIE': { name: 'Thây ma', hp: 325, speed: 0.2, dmg: 50, atkSpeed: 1.5, color: '#27ae60', radius: 15, reward: 5 },
+        'ZOMBIE_ARMOR': { name: 'Zombie giáp sắt', hp: 1125, speed: 0.17, dmg: 50, atkSpeed: 1.5, color: '#95a5a6', radius: 16, reward: 15 },
+        'ZOMBIE_SHIELD': { name: 'Zombie khiên chắn', hp: 11250, speed: 0.09, dmg: 0, atkSpeed: 1.5, color: '#f39c12', radius: 18, taunt: true, reward: 250 },
+        'ZOMBIE_KNIGHT': { name: 'Zombie kị sĩ', hp: 3000, speed: 0.45, dmg: 150, atkSpeed: 1.0, color: '#8e44ad', radius: 17, reward: 55 },
+        'SKELETON': { name: 'Xương chiến sĩ', hp: 500, speed: 0.27, dmg: 200, atkSpeed: 1.2, color: '#ecf0f1', radius: 14, reward: 30 },
+        'GIANT_ZOMBIE': { name: 'Giant Zombie', hp: 100000, speed: 0.075, dmg: 500, atkSpeed: 2.5, color: '#c0392b', radius: 35, reward: 2500 }
+    },
+    wave: {
+        startDelay: 25000, 
+        baseSpawnRate: 3000 
+    },
+    spells: {
+        'HEAL': { cost: 250, cd: 300000 },      
+        'PUSH': { cost: 500, cd: 50000 },      
+        'MISSILE': { cost: 125, cd: 10000 },   
+        'FREEZE': { cost: 50, cd: 15000 }      
+    }
+};
+
+class Game {
+    constructor() {
+        this.canvas = document.getElementById('gameCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+        
+        this.gold = CONFIG.startGold;
+        this.timeElapsed = 0; 
+        this.lastTime = performance.now();
+        this.lastGoldTime = 0;
+        this.lastSpawnTime = 0;
+        
+        this.goldMineLv = 1;
+        this.bossSpawnCount = 0; 
+        this.spellCooldowns = { 'HEAL': 0, 'PUSH': 0, 'MISSILE': 0, 'FREEZE': 0 };
+        this.walls = [];
+        this.slots = [];
+        this.enemies = [];
+        this.projectiles = [];
+        this.particles = [];
+        this.swordsmen = []; 
+        this.floatingTexts = []; 
+        
+        this.selectedSlot = null;
+        
+        this.initWallsAndSlots();
+        this.setupUI();
+        this.loop = this.loop.bind(this);
+        requestAnimationFrame(this.loop);
+
+        document.getElementById('btn-spell-heal').onclick = () => this.castSpell('HEAL');
+        document.getElementById('btn-spell-push').onclick = () => this.castSpell('PUSH');
+        document.getElementById('btn-spell-missile').onclick = () => this.castSpell('MISSILE');
+        document.getElementById('btn-spell-freeze').onclick = () => this.castSpell('FREEZE');
+    }
+
+    initWallsAndSlots() {
+        CONFIG.walls.forEach(w => {
+            let wall = { ...w, active: true };
+            this.walls.push(wall);
+            
+            const totalSlots = w.slots + w.superSlots;
+            const startY = 100;
+            const spacing = 450 / totalSlots;
+            
+            for(let i=0; i<totalSlots; i++) {
+                this.slots.push({
+                    wallId: w.id,
+                    x: w.x,
+                    y: startY + i * spacing,
+                    size: 30,
+                    isSuper: i >= w.slots,
+                    isPremium: false,
+                    isTrap: false,
+                    isHero: false,
+                    tower: null
+                });
+            }
+
+            const heroOffsets = [-35, 0, 35];
+            for(let i=0; i<3; i++) {
+                this.slots.push({
+                    wallId: w.id,
+                    x: w.x + heroOffsets[i],
+                    y: 570, 
+                    size: 30,
+                    isSuper: false,
+                    isPremium: false,
+                    isTrap: false,
+                    isHero: true,
+                    hero: null
+                });
+            }
+        });
+
+        const premiumY = [200, 300, 400];
+        for(let i = 0; i < 3; i++) {
+            this.slots.push({
+                wallId: 3, 
+                x: 40,     
+                y: premiumY[i],
+                size: 40,
+                isSuper: true,
+                isPremium: true,
+                isTrap: false,
+                isHero: false,
+                tower: null
+            });
+        }
+
+        const trapPositions = [
+            {x: 500, y: 150}, {x: 500, y: 300}, {x: 500, y: 450},
+            {x: 750, y: 150}, {x: 750, y: 300}, {x: 750, y: 450}
+        ];
+        trapPositions.forEach(pos => {
+            this.slots.push({ x: pos.x, y: pos.y, size: 40, isTrap: true, trap: null });
+        });
+    }
+
+    setupUI() {
+        const btn = document.getElementById('gold-mine-btn');
+        btn.style.left = `${CONFIG.goldMine.x + CONFIG.goldMine.width/2}px`;
+        btn.style.top = `${CONFIG.goldMine.y - 35}px`;
+        
+        btn.onclick = () => {
+            let cost = CONFIG.goldMine.getUpgradeCost(this.goldMineLv);
+            if (this.gold >= cost) {
+                this.gold -= cost;
+                this.goldMineLv++;
+                this.updateUI();
+            }
+        };
+
+        this.canvas.addEventListener('click', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            let clickedSlot = null;
+            for (let slot of this.slots) {
+                if (!slot.isTrap && !slot.isHero) {
+                    let wall = this.walls.find(w => w.id === slot.wallId);
+                    if (!wall || !wall.active) continue;
+                }
+                if (slot.isHero) {
+                    let wall = this.walls.find(w => w.id === slot.wallId);
+                    if (!wall || !wall.active) continue;
+                }
+                
+                if (x >= slot.x - slot.size/2 && x <= slot.x + slot.size/2 &&
+                    y >= slot.y - slot.size/2 && y <= slot.y + slot.size/2) {
+                    clickedSlot = slot;
+                    break;
+                }
+            }
+            
+            if (clickedSlot) {
+                this.selectedSlot = clickedSlot;
+                this.showActionMenu(clickedSlot, e.clientX, e.clientY);
+            } else {
+                this.selectedSlot = null;
+                document.getElementById('action-menu').style.display = 'none';
+            }
+        });
+    }
+
+    showActionMenu(slot, mouseX, mouseY) {
+        const menu = document.getElementById('action-menu');
+        menu.innerHTML = '';
+        
+        if (slot.isHero) {
+            if (!slot.hero) {
+                ['KIEM_SI', 'PHAP_SU', 'NO_THAN', 'TU_LANH'].forEach(type => {
+                    const hData = CONFIG.heroes[type];
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn';
+                    btn.innerHTML = `Gọi ${hData.name} <span class="cost">${hData.cost}v</span>`;
+                    btn.disabled = this.gold < hData.cost;
+                    btn.onclick = () => {
+                        if (this.gold >= hData.cost) {
+                            this.gold -= hData.cost;
+                            slot.hero = { type: type, lv: 1, cooldown: hData.cd };
+                            this.hideMenu();
+                        }
+                    };
+                    menu.appendChild(btn);
+                });
+            } else {
+                const hData = CONFIG.heroes[slot.hero.type];
+                let isMax = hData.maxLv && slot.hero.lv >= hData.maxLv;
+                
+                if (!isMax) {
+                    const cost = hData.baseUpg + (slot.hero.lv - 1) * hData.incUpg;
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn';
+                    btn.innerHTML = `Nâng cấp (Lv ${slot.hero.lv+1}) <span class="cost">${cost}v</span>`;
+                    btn.disabled = this.gold < cost;
+                    btn.onclick = () => {
+                        if (this.gold >= cost) {
+                            this.gold -= cost;
+                            slot.hero.lv++;
+                            this.hideMenu();
+                        }
+                    };
+                    menu.appendChild(btn);
+                } else {
+                    const p = document.createElement('p');
+                    p.style.margin = "0"; p.style.fontSize = "14px"; p.style.color = "#bdc3c7";
+                    p.innerText = "Cấp tối đa";
+                    menu.appendChild(p);
+                }
+
+                const demoBtn = document.createElement('button');
+                demoBtn.className = 'menu-btn btn-danger';
+                const refund = Math.floor(hData.cost / 2);
+                demoBtn.innerHTML = `Hủy Hero <span class="cost" style="color:#fff">+${refund}v</span>`;
+                demoBtn.onclick = () => {
+                    this.gold += refund;
+                    slot.hero = null;
+                    this.hideMenu();
+                };
+                menu.appendChild(demoBtn);
+            }
+        } 
+        else if (slot.isTrap) {
+            if (!slot.trap) {
+                ['WEB', 'FREEZE'].forEach(type => {
+                    const tData = CONFIG.traps[type];
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn';
+                    btn.innerHTML = `Mua ${tData.name} <span class="cost">${tData.cost}v</span>`;
+                    btn.disabled = this.gold < tData.cost;
+                    btn.onclick = () => {
+                        if (this.gold >= tData.cost) {
+                            this.gold -= tData.cost;
+                            slot.trap = { type: type, lv: 1, cooldown: 0, activeTimer: 0 };
+                            this.hideMenu();
+                        }
+                    };
+                    menu.appendChild(btn);
+                });
+            } else {
+                const tData = CONFIG.traps[slot.trap.type];
+                if (slot.trap.lv < tData.maxLv) {
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn';
+                    const cost = tData.upgCost;
+                    btn.innerHTML = `Nâng cấp (Lv ${slot.trap.lv+1}) <span class="cost">${cost}v</span>`;
+                    btn.disabled = this.gold < cost;
+                    btn.onclick = () => {
+                        if (this.gold >= cost) {
+                            this.gold -= cost;
+                            slot.trap.lv++;
+                            this.hideMenu();
+                        }
+                    };
+                    menu.appendChild(btn);
+                } else {
+                    const p = document.createElement('p');
+                    p.style.margin = "0"; p.style.fontSize = "14px"; p.style.color = "#bdc3c7";
+                    p.innerText = "Cấp tối đa";
+                    menu.appendChild(p);
+                }
+                
+                const demoBtn = document.createElement('button');
+                demoBtn.className = 'menu-btn btn-danger';
+                const refund = Math.floor(tData.cost / 2);
+                demoBtn.innerHTML = `Tháo dỡ <span class="cost" style="color:#fff">+${refund}v</span>`;
+                demoBtn.onclick = () => {
+                    this.gold += refund;
+                    slot.trap = null;
+                    this.hideMenu();
+                };
+                menu.appendChild(demoBtn);
+            }
+        } else {
+            if (!slot.tower) {
+                const availableTowers = slot.isPremium 
+                    ? ['TEN_LUA_SIEU_THANH', 'SUNG_NANG_LUONG', 'PHAO_PHAN_VAT_CHAT', 'THO_SUA_CHUA', 'SAN_BAY'] 
+                    : ['THAP_NO', 'THAP_DA', 'COT_DIEN', 'THAP_TUYET'];
+
+                availableTowers.forEach(type => {
+                    const tData = CONFIG.towers[type];
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn';
+                    btn.innerHTML = `Xây ${tData.name} <span class="cost">${tData.cost}v</span>`;
+                    btn.disabled = this.gold < tData.cost;
+                    btn.onclick = () => {
+                        if (this.gold >= tData.cost) {
+                            this.gold -= tData.cost;
+                            slot.tower = { type: type, lv: 1, cooldown: 0, isBroken: false };
+                            this.hideMenu();
+                        }
+                    };
+                    menu.appendChild(btn);
+                });
+            } else {
+                const tData = CONFIG.towers[slot.tower.type];
+                if (slot.tower.lv < tData.maxLv) {
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-btn';
+                    const cost = tData.upgCost;
+                    btn.innerHTML = `Nâng cấp (Lv ${slot.tower.lv+1}) <span class="cost">${cost}v</span>`;
+                    btn.disabled = this.gold < cost;
+                    btn.onclick = () => {
+                        if (this.gold >= cost) {
+                            this.gold -= cost;
+                            slot.tower.lv++;
+                            this.hideMenu();
+                        }
+                    };
+                    menu.appendChild(btn);
+                } else if (tData.evolvesTo.length > 0) {
+                    tData.evolvesTo.forEach(nextType => {
+                        const nextData = CONFIG.towers[nextType];
+                        const btn = document.createElement('button');
+                        btn.className = 'menu-btn';
+                        const cost = nextData.cost;
+                        btn.innerHTML = `Nâng lên: ${nextData.name} <span class="cost">${cost}v</span>`;
+                        btn.disabled = this.gold < cost;
+                        btn.onclick = () => {
+                            if (this.gold >= cost) {
+                                this.gold -= cost;
+                                slot.tower = { type: nextType, lv: 1, cooldown: 0, isBroken: false };
+                                this.hideMenu();
+                            }
+                        };
+                        menu.appendChild(btn);
+                    });
+                } else {
+                    const p = document.createElement('p');
+                    p.style.margin = "0"; p.style.fontSize = "14px"; p.style.color = "#bdc3c7";
+                    p.innerText = "Cấp tối đa";
+                    menu.appendChild(p);
+                }
+                
+                const demoBtn = document.createElement('button');
+                demoBtn.className = 'menu-btn btn-danger';
+                const refund = Math.floor(tData.cost / 2);
+                demoBtn.innerHTML = `Phá bỏ <span class="cost" style="color:#fff">+${refund}v</span>`;
+                demoBtn.onclick = () => {
+                    this.gold += refund;
+                    slot.tower = null;
+                    this.hideMenu();
+                };
+                menu.appendChild(demoBtn);
+            }
+        }
+
+        menu.style.display = 'flex';
+        const rect = this.canvas.getBoundingClientRect();
+        menu.style.left = `${rect.left + slot.x}px`;
+        menu.style.top = `${rect.top + slot.y - slot.size}px`;
+    }
+
+    hideMenu() {
+        document.getElementById('action-menu').style.display = 'none';
+        this.selectedSlot = null;
+        this.updateUI();
+    }
+
+    updateUI() {
+        document.getElementById('gold-display').innerText = Math.floor(this.gold);
+        document.getElementById('mine-lv').innerText = this.goldMineLv;
+        document.getElementById('mine-rate').innerText = CONFIG.goldMine.getBaseRate(this.goldMineLv);
+        
+        const cost = CONFIG.goldMine.getUpgradeCost(this.goldMineLv);
+        const btn = document.getElementById('gold-mine-btn');
+        btn.innerText = `Nâng cấp (${cost}v)`;
+        btn.style.opacity = this.gold >= cost ? "1" : "0.5";
+        
+        let secs = Math.floor(this.timeElapsed / 1000);
+        let mins = Math.floor(secs / 60);
+        secs = secs % 60;
+        document.getElementById('time-display').innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
+
+        if (this.timeElapsed >= CONFIG.wave.startDelay) {
+            document.getElementById('spawn-status').innerText = "Đang tấn công!";
+            document.getElementById('spawn-status').style.color = "#e74c3c";
+        }
+        
+        if (this.selectedSlot && document.getElementById('action-menu').style.display === 'flex') {
+            const rect = this.canvas.getBoundingClientRect();
+            this.showActionMenu(this.selectedSlot, rect.left + this.selectedSlot.x, rect.top + this.selectedSlot.y);
+        }
+
+        const spellConfigs = [
+            { id: 'heal', key: 'HEAL' },
+            { id: 'push', key: 'PUSH' },
+            { id: 'missile', key: 'MISSILE' },
+            { id: 'freeze', key: 'FREEZE' }
+        ];
+        spellConfigs.forEach(s => {
+            const btn = document.getElementById(`btn-spell-${s.id}`);
+            const cdOverlay = document.getElementById(`cd-${s.id}`);
+            const conf = CONFIG.spells[s.key];
+            const currentCd = this.spellCooldowns[s.key];
+            
+            if (currentCd > 0) {
+                btn.disabled = true;
+                cdOverlay.style.height = `${(currentCd / conf.cd) * 100}%`;
+            } else {
+                btn.disabled = this.gold < conf.cost;
+                cdOverlay.style.height = '0%';
+            }
+        });
+    }
+
+    spawnEnemy(forcedType = null) {
+        const scale = 1 + (this.timeElapsed / 60000) * 0.5;
+        let type = forcedType;
+        
+        if (!type) {
+            const mins = this.timeElapsed / 60000;
+            let pool = [['ZOMBIE', 100]]; 
+            
+            if (mins >= 2) pool.push(['ZOMBIE_ARMOR', 10])
+            if (mins >= 5) pool.push(['ZOMBIE_KNIGHT', 10]);
+            if (mins >= 3) pool.push(['SKELETON', 35]);
+            if (mins >= 2) pool.push(['ZOMBIE_SHIELD', 1])
+
+            let totalWeight = pool.reduce((sum, item) => sum + item[1], 0);
+            let rand = Math.random() * totalWeight;
+            
+            for (let item of pool) {
+                if (rand < item[1]) { type = item[0]; break; }
+                rand -= item[1];
+            }
+        }
+
+        const base = CONFIG.enemies[type];
+        let actualHp = base.hp * scale;
+
+        if (type === 'GIANT_ZOMBIE') {
+            actualHp = base.hp * Math.pow(1.5, this.bossSpawnCount - 1);
+        }
+
+        this.enemies.push({
+            x: this.width + 20,
+            y: 100 + Math.random() * 400,
+            hp: actualHp, maxHp: actualHp,
+            speed: base.speed, baseSpeed: base.speed, 
+            dmg: base.dmg, atkSpeed: base.atkSpeed, cooldown: 0,
+            radius: base.radius, color: base.color, baseColor: base.color, 
+            freezeTimer: 0, trapFreezeTimer: 0, fridgeSlowTimer: 0, fridgeSlowPercent: 0,
+            iceSlowTimer: 0, iceSlowPercent: 0, stunTimer: 0, iceFreezeTimer: 0,
+            blockedBy: null, taunt: base.taunt || false, reward: base.reward
+        });
+    }
+
+    castSpell(key) {
+        const conf = CONFIG.spells[key];
+        if (this.gold >= conf.cost && this.spellCooldowns[key] === 0) {
+            this.gold -= conf.cost;
+            this.spellCooldowns[key] = conf.cd;
+            
+            if (key === 'HEAL') {
+                this.walls.forEach(w => w.hp = Math.min(w.maxHp, w.hp + (w.maxHp * 1)));
+            } 
+            else if (key === 'PUSH') {
+                this.enemies.forEach(e => e.x = this.width + Math.random() * 50);
+            }
+            else if (key === 'MISSILE') {
+                let targets = [...this.enemies].sort(() => 0.5 - Math.random()).slice(0, 5);
+                targets.forEach(t => {
+                    this.enemies.forEach(e => {
+                        if (Math.hypot(e.x - t.x, e.y - t.y) <= 100) e.hp -= 1000;
+                    });
+                    this.particles.push({ x: t.x, y: t.y, radius: 5, maxRadius: 100, opacity: 1, color: '#e74c3c' });
+                });
+            }
+            else if (key === 'FREEZE') {
+                let sortedEnemies = [...this.enemies].sort((a, b) => a.x - b.x);
+                let half = Math.ceil(sortedEnemies.length / 2);
+                for (let i = 0; i < half; i++) sortedEnemies[i].freezeTimer = 5000; 
+            }
+            this.updateUI();
+        }
+    }
+
+    triggerAoE(x, y, dmg, radius) {
+        this.enemies.forEach(e => {
+            if (Math.hypot(e.x - x, e.y - y) <= radius) e.hp -= dmg;
+        });
+        this.particles.push({ x: x, y: y, radius: 5, maxRadius: radius, opacity: 1, color: '#e74c3c' });
+    }
+
+    update(dt) {
+        this.timeElapsed += dt;
+
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            let ft = this.floatingTexts[i];
+            ft.y -= dt * 0.03;
+            ft.life -= dt;
+            if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+        }
+
+        for (let key in this.spellCooldowns) {
+            if (this.spellCooldowns[key] > 0) this.spellCooldowns[key] = Math.max(0, this.spellCooldowns[key] - dt);
+        }
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            let p = this.particles[i];
+            p.radius += dt * 0.3; p.opacity -= dt * 0.002;
+            if (p.opacity <= 0 || p.radius >= p.maxRadius) this.particles.splice(i, 1);
+        }
+
+        this.lastGoldTime += dt;
+        if (this.lastGoldTime >= CONFIG.goldMine.interval) {
+            this.gold += CONFIG.goldMine.getBaseRate(this.goldMineLv);
+            this.lastGoldTime = 0;
+            this.updateUI();
+        }
+
+        if (this.timeElapsed >= CONFIG.wave.startDelay) {
+            let passedFiveMins = Math.floor((this.timeElapsed - CONFIG.wave.startDelay) / 300000);
+            if (passedFiveMins > this.bossSpawnCount) {
+                this.bossSpawnCount++;
+                this.spawnEnemy('GIANT_ZOMBIE');
+            }
+
+            this.lastSpawnTime += dt;
+            let currentSpawnRate = Math.max(500, CONFIG.wave.baseSpawnRate - (this.timeElapsed / 1000) * 10);
+            if (this.lastSpawnTime >= currentSpawnRate) {
+                this.spawnEnemy(); this.lastSpawnTime = 0;
+            }
+        }
+
+        this.enemies.forEach(e => e.webSlowed = false);
+
+        this.slots.forEach(slot => {
+            if (slot.isTrap && slot.trap) {
+                let tData = CONFIG.traps[slot.trap.type];
+                let currentCd = tData.baseCd - (slot.trap.lv - 1) * tData.cdPerLv;
+
+                if (slot.trap.type === 'WEB') {
+                    let radius = tData.baseRadius + (slot.trap.lv - 1) * tData.radiusPerLv;
+                    if (slot.trap.activeTimer > 0) {
+                        slot.trap.activeTimer -= dt;
+                        this.enemies.forEach(e => {
+                            if (Math.hypot(e.x - slot.x, e.y - slot.y) <= radius) e.webSlowed = true;
+                        });
+                    } else {
+                        slot.trap.cooldown -= dt;
+                        if (slot.trap.cooldown <= 0) {
+                            slot.trap.activeTimer = tData.duration; slot.trap.cooldown = currentCd;
+                        }
+                    }
+                } else if (slot.trap.type === 'FREEZE') {
+                    slot.trap.cooldown -= dt;
+                    if (slot.trap.cooldown <= 0) {
+                        let triggered = false;
+                        for (let e of this.enemies) {
+                            if (Math.hypot(e.x - slot.x, e.y - slot.y) <= tData.triggerRadius) { triggered = true; break; }
+                        }
+                        if (triggered) {
+                            slot.trap.cooldown = currentCd;
+                            this.enemies.forEach(e => e.trapFreezeTimer = tData.duration);
+                            this.particles.push({ x: slot.x, y: slot.y, radius: 10, maxRadius: 1000, opacity: 0.5, color: '#00ffff' });
+                        }
+                    }
+                }
+            }
+
+            let wall = this.walls.find(w => w.id === slot.wallId);
+            if (slot.isHero && slot.hero && wall && wall.active) {
+                let hData = CONFIG.heroes[slot.hero.type];
+                let lv = slot.hero.lv;
+                slot.hero.cooldown -= dt;
+
+                if (slot.hero.cooldown <= 0) {
+                    if (slot.hero.type === 'KIEM_SI') {
+                        let hp = 400 + (lv - 1) * 80;
+                        let dmg = 50 + (lv - 1) * 10;
+                        for(let i=0; i<2; i++) {
+                            this.swordsmen.push({ x: slot.x, y: 100 + Math.random() * 400, hp: hp, maxHp: hp, dmg: dmg, atkCd: 0 });
+                        }
+                        slot.hero.cooldown = 10000;
+                    }
+                    else if (slot.hero.type === 'PHAP_SU') {
+                        if (this.enemies.length > 0) {
+                            let dmg = 2500 + (lv - 1) * 125;
+                            let e = this.enemies[Math.floor(Math.random() * this.enemies.length)];
+                            this.enemies.forEach(t => {
+                                if (Math.hypot(t.x - e.x, t.y - e.y) <= 150) { t.hp -= dmg; t.freezeTimer = 2500; }
+                            });
+                            this.particles.push({ x: e.x, y: e.y, radius: 10, maxRadius: 150, opacity: 1, color: '#9b59b6' });
+                        }
+                        slot.hero.cooldown = 10000;
+                    }
+                    else if (slot.hero.type === 'NO_THAN') {
+                        let dmg = 400 + (lv - 1) * 30; // Sát thương cơ bản theo cấp độ
+                        this.enemies.forEach(e => {
+                            this.projectiles.push({
+                                x: slot.x, 
+                                y: slot.y, 
+                                target: e,
+                                dmg: dmg, // Chỉ gây sát thương cơ bản, không còn oneshot nữa
+                                speed: 20, 
+                                color: '#f1c40f', 
+                                aoeRadius: 0
+                            });
+                        });
+                        slot.hero.cooldown = 5000;
+                    }
+                    else if (slot.hero.type === 'TU_LANH') {
+                        let slowP = Math.min(0.9, 0.25 + (lv - 1) * 0.05);
+                        let cd = Math.max(1000, (25 - (lv - 1)) * 1000);
+                        this.enemies.forEach(e => { e.fridgeSlowPercent = slowP; e.fridgeSlowTimer = 5000; });
+                        this.particles.push({ x: slot.x, y: 300, radius: 10, maxRadius: 1500, opacity: 0.3, color: '#00ffff' });
+                        slot.hero.cooldown = cd;
+                    }
+                }
+            }
+
+            if (!slot.isTrap && !slot.isHero && wall && wall.active && slot.tower) {
+                let tData = CONFIG.towers[slot.tower.type];
+                let range = tData.range + (slot.tower.lv - 1) * (tData.rangePerLv || 0);
+                let dmg = tData.baseDmg + (slot.tower.lv - 1) * (tData.dmgPerLv || 0);
+                let as = tData.baseAs * 1000;
+
+                slot.tower.cooldown -= dt;
+                
+                if (slot.tower.cooldown <= 0) {
+                    
+                    if (tData.special === 'heal_wall') {
+                        if (wall.hp < wall.maxHp) {
+                            wall.hp = Math.min(wall.maxHp, wall.hp + wall.maxHp * 0.05);
+                            this.floatingTexts.push({ text: '+', x: slot.x, y: slot.y - 15, color: '#2ecc71', life: 1500 });
+                        }
+                        slot.tower.cooldown = as;
+                        return; 
+                    } 
+                    else if (tData.special === 'carpet_bomb') {
+                        for (let i = 0; i < 8; i++) {
+                            let bx = 300 + Math.random() * 650; 
+                            let by = 50 + Math.random() * 500;
+                            this.particles.push({ x: bx, y: by, radius: 5, maxRadius: 25, opacity: 1, color: '#e74c3c' });
+                            this.projectiles.push({
+                                x: bx, y: by, target: {x: bx, y: by, hp: 1}, dmg: dmg,
+                                speed: 0, color: 'transparent', delay: 500 + Math.random() * 500, aoeRadius: tData.aoeRadius
+                            });
+                        }
+                        slot.tower.cooldown = as;
+                        return; 
+                    }
+                    else if (tData.special === 'auto_aoe') {
+                        this.particles.push({ x: slot.x, y: slot.y, radius: 10, maxRadius: range, opacity: 0.8, color: '#f1c40f' });
+                        this.enemies.forEach(e => {
+                            if (Math.hypot(e.x - slot.x, e.y - slot.y) <= range) e.hp -= dmg;
+                        });
+                        slot.tower.cooldown = as;
+                        return;
+                    }
+
+                    let validTargets = [];
+                    for (let e of this.enemies) {
+                        let dist = Math.hypot(e.x - slot.x, e.y - slot.y);
+                        if (dist <= range || tData.range === 9999) validTargets.push(e);
+                    }
+
+                    let target = null;
+                    if (validTargets.length > 0) {
+                        if (['slow_20', 'slow_40', 'slow_50', 'freeze_3'].includes(tData.special)) {
+                            let unaffected = validTargets.filter(e => e.iceSlowTimer <= 0 && e.iceFreezeTimer <= 0);
+                            if (unaffected.length > 0) validTargets = unaffected;
+                        }
+
+                        let maxX = -9999;
+                        let maxHp = -1;
+                        let hasTaunt = false; 
+
+                        for (let e of validTargets) {
+                            if (e.taunt && !hasTaunt) {
+                                target = e; maxX = e.x; maxHp = e.hp; hasTaunt = true;
+                            } else if (e.taunt && hasTaunt) {
+                                if (tData.targetHighestHp) { if (e.hp > maxHp) { target = e; maxHp = e.hp; } }
+                                else if (tData.targetLast) { if (e.x > maxX) { target = e; maxX = e.x; } } 
+                                else { if (e.x < target.x) target = e; }
+                            } else if (!hasTaunt) {
+                                if (tData.targetHighestHp) { if (e.hp > maxHp) { target = e; maxHp = e.hp; } }
+                                else if (tData.targetLast) { if (e.x > maxX) { target = e; maxX = e.x; } } 
+                                else { if (!target || e.x < target.x) target = e; }
+                            }
+                        }
+                    }
+
+                    if (target) {
+                        if (tData.delayStrike) {
+                            this.particles.push({ x: slot.x, y: slot.y, radius: 5, maxRadius: 25, opacity: 1, color: '#e74c3c' });
+                            this.projectiles.push({
+                                x: target.x, y: target.y, target: target, dmg: dmg,
+                                speed: 0, color: 'transparent', delay: tData.delayStrike, aoeRadius: tData.aoeRadius, special: tData.special
+                            });
+                        } else {
+                            this.projectiles.push({
+                                x: slot.x, y: slot.y, target: target, dmg: dmg,
+                                speed: 15, color: tData.projColor, aoeRadius: tData.aoeRadius || 0, special: tData.special
+                            });
+                        }
+                        slot.tower.cooldown = as;
+                        slot.tower.isBroken = false;
+                        if (tData.special === 'breakdown') {
+                            if (Math.random() < 0.125) { 
+                                slot.tower.cooldown = 10000;
+                                slot.tower.isBroken = true;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        for(let i = this.swordsmen.length - 1; i >= 0; i--) {
+            let sm = this.swordsmen[i];
+            let fighting = false;
+
+            for(let e of this.enemies) {
+                if (Math.hypot(e.x - sm.x, e.y - sm.y) < e.radius + 15) {
+                    fighting = true; e.blockedBy = sm;
+                    sm.atkCd -= dt;
+                    if (sm.atkCd <= 0) { e.hp -= sm.dmg; sm.atkCd = 1000; }
+                    break;
+                }
+            }
+            if (!fighting) sm.x += (dt / 16.6) * 1.5; 
+            if (sm.x > this.width + 50 || sm.hp <= 0) this.swordsmen.splice(i, 1);
+        }
+
+        let frontWall = null;
+        for (let i = 0; i < this.walls.length; i++) {
+            if (this.walls[i].active) { frontWall = this.walls[i]; break; }
+        }
+
+        for (let i = this.enemies.length - 1; i >= 0; i--) {
+            let e = this.enemies[i];
+            
+            if (e.trapFreezeTimer > 0) e.trapFreezeTimer -= dt;
+            if (e.freezeTimer > 0) e.freezeTimer -= dt;
+            if (e.fridgeSlowTimer > 0) e.fridgeSlowTimer -= dt;
+            if (e.iceSlowTimer > 0) e.iceSlowTimer -= dt;
+            if (e.iceFreezeTimer > 0) e.iceFreezeTimer -= dt;
+            if (e.stunTimer > 0) e.stunTimer -= dt;
+
+            let currentSlow = 0;
+            if (e.webSlowed) currentSlow = Math.max(currentSlow, CONFIG.traps['WEB'].slowPercent);
+            if (e.fridgeSlowTimer > 0) currentSlow = Math.max(currentSlow, e.fridgeSlowPercent);
+            if (e.iceSlowTimer > 0) currentSlow = Math.max(currentSlow, e.iceSlowPercent);
+
+            if (e.trapFreezeTimer > 0 || e.stunTimer > 0 || e.iceFreezeTimer > 0) { e.speed = 0; e.color = '#00ffff'; } 
+            else if (e.freezeTimer > 0) { e.speed = e.baseSpeed * 0.5; e.color = '#3498db'; } 
+            else {
+                e.speed = e.baseSpeed * (1 - currentSlow);
+                if (currentSlow > 0) e.color = '#bdc3c7'; else e.color = e.baseColor;
+            }
+
+            if (e.blockedBy && e.blockedBy.hp > 0) {
+                e.cooldown -= dt;
+                if (e.cooldown <= 0 && e.speed > 0) { e.blockedBy.hp -= e.dmg; e.cooldown = e.atkSpeed * 1000; }
+            }
+            else if (frontWall && e.x - e.radius <= frontWall.x + 10) {
+                e.blockedBy = null;
+                e.cooldown -= dt;
+                if (e.cooldown <= 0 && e.speed > 0) { 
+                    frontWall.hp -= e.dmg; e.cooldown = e.atkSpeed * 1000;
+                    if (frontWall.hp <= 0) {
+                        frontWall.active = false;
+                        this.slots.forEach(s => {
+                            if (s.wallId === frontWall.id && !s.isHero) s.tower = null;
+                            if (s.wallId === frontWall.id && s.isHero) s.hero = null;
+                        });
+                        frontWall = this.walls.find(w => w.active); 
+                    }
+                }
+            } else { e.blockedBy = null; e.x -= e.speed * (dt / 16.6); }
+
+            if (e.hp <= 0) { this.gold += e.reward; this.enemies.splice(i, 1); }
+        }
+
+        if (!this.walls[this.walls.length - 1].active) {
+            alert(`GAME OVER! Bạn trụ được ${document.getElementById('time-display').innerText}`);
+            location.reload();
+        }
+
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            let p = this.projectiles[i];
+            
+            if (p.delay !== undefined) {
+                p.delay -= dt;
+                if (p.target && p.target.hp > 0) { p.x = p.target.x; p.y = p.target.y; }
+                if (p.delay <= 0) {
+                    if (p.special === 'stun_aoe') {
+                        p.target.hp -= p.dmg;
+                        this.enemies.forEach(e => {
+                            if (e !== p.target && Math.hypot(e.x - p.target.x, e.y - p.target.y) <= p.aoeRadius) e.stunTimer = 500;
+                        });
+                        this.particles.push({ x: p.target.x, y: p.target.y, radius: 10, maxRadius: p.aoeRadius, opacity: 0.5, color: '#f1c40f' });
+                    } else if (p.aoeRadius > 0) {
+                        this.triggerAoE(p.x, p.y, p.dmg, p.aoeRadius);
+                    }
+                    this.projectiles.splice(i, 1);
+                }
+                continue;
+            }
+
+            if (!p.target || p.target.hp <= 0) { this.projectiles.splice(i, 1); continue; }
+
+            let dx = p.target.x - p.x; let dy = p.target.y - p.y;
+            let dist = Math.hypot(dx, dy);
+
+            if (dist < p.speed) {
+                if (p.special === 'stun_aoe') {
+                    p.target.hp -= p.dmg;
+                    this.enemies.forEach(e => {
+                        if (e !== p.target && Math.hypot(e.x - p.target.x, e.y - p.target.y) <= p.aoeRadius) e.stunTimer = 500;
+                    });
+                    this.particles.push({ x: p.target.x, y: p.target.y, radius: 10, maxRadius: p.aoeRadius, opacity: 0.5, color: '#f1c40f' });
+                }
+                else if (p.aoeRadius > 0) {
+                    this.triggerAoE(p.target.x, p.target.y, p.dmg, p.aoeRadius);
+                }
+                else { 
+                    p.target.hp -= p.dmg; 
+                    if (p.special === 'slow_20') { p.target.iceSlowPercent = 0.2; p.target.iceSlowTimer = 2000; }
+                    if (p.special === 'slow_40') { p.target.iceSlowPercent = 0.4; p.target.iceSlowTimer = 2000; }
+                    if (p.special === 'slow_50') { p.target.iceSlowPercent = 0.5; p.target.iceSlowTimer = 2000; }
+                    if (p.special === 'freeze_3') { p.target.iceFreezeTimer = 3000; }
+                }
+                
+                this.projectiles.splice(i, 1);
+            } else { p.x += (dx / dist) * p.speed; p.y += (dy / dist) * p.speed; }
+        }
+
+        if (Math.floor(this.timeElapsed/1000) > Math.floor((this.timeElapsed-dt)/1000)) this.updateUI();
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.width, this.height);
+
+        this.ctx.fillStyle = '#f39c12';
+        this.ctx.fillRect(CONFIG.goldMine.x, CONFIG.goldMine.y, CONFIG.goldMine.width, CONFIG.goldMine.height);
+        this.ctx.fillStyle = '#000'; this.ctx.font = 'bold 14px Arial'; this.ctx.textAlign = 'center';
+        this.ctx.fillText(`Mỏ Vàng`, CONFIG.goldMine.x + CONFIG.goldMine.width/2, CONFIG.goldMine.y + 25);
+        this.ctx.fillText(`Lv.${this.goldMineLv}`, CONFIG.goldMine.x + CONFIG.goldMine.width/2, CONFIG.goldMine.y + 45);
+
+        this.walls.forEach(w => {
+            if (!w.active) return;
+            this.ctx.fillStyle = w.color;
+            this.ctx.fillRect(w.x - 10, 50, 20, 500);
+            
+            this.ctx.fillStyle = 'red'; this.ctx.fillRect(w.x - 20, 30, 40, 5);
+            this.ctx.fillStyle = '#2ecc71'; this.ctx.fillRect(w.x - 20, 30, 40 * (w.hp / w.maxHp), 5);
+        });
+
+        this.slots.forEach(slot => {
+            if (slot.isTrap) {
+                this.ctx.strokeStyle = '#7f8c8d'; this.ctx.setLineDash([5, 5]);
+                this.ctx.lineWidth = this.selectedSlot === slot ? 3 : 1;
+                this.ctx.strokeRect(slot.x - slot.size/2, slot.y - slot.size/2, slot.size, slot.size);
+                this.ctx.setLineDash([]); 
+
+                if (slot.trap) {
+                    let tData = CONFIG.traps[slot.trap.type];
+                    if (slot.trap.type === 'WEB' && slot.trap.activeTimer > 0) {
+                        let radius = tData.baseRadius + (slot.trap.lv - 1) * tData.radiusPerLv;
+                        this.ctx.fillStyle = 'rgba(236, 240, 241, 0.3)';
+                        this.ctx.beginPath(); this.ctx.arc(slot.x, slot.y, radius, 0, Math.PI * 2); this.ctx.fill();
+                        this.ctx.strokeStyle = '#bdc3c7'; this.ctx.lineWidth = 1; this.ctx.stroke();
+                    }
+
+                    this.ctx.fillStyle = tData.color;
+                    this.ctx.fillRect(slot.x - slot.size/2 + 5, slot.y - slot.size/2 + 5, slot.size - 10, slot.size - 10);
+                    this.ctx.fillStyle = '#000'; this.ctx.font = '10px Arial'; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(`L${slot.trap.lv}`, slot.x, slot.y);
+
+                    if (slot.trap.type === 'FREEZE' && slot.trap.cooldown > 0) {
+                        let maxCd = tData.baseCd - (slot.trap.lv - 1) * tData.cdPerLv;
+                        let cdPercent = slot.trap.cooldown / maxCd;
+                        this.ctx.fillStyle = 'rgba(0,0,0,0.5)'; this.ctx.fillRect(slot.x - 15, slot.y + 15, 30, 4);
+                        this.ctx.fillStyle = '#3498db'; this.ctx.fillRect(slot.x - 15, slot.y + 15, 30 * (1 - cdPercent), 4);
+                    }
+                }
+                return;
+            }
+
+            let wall = this.walls.find(w => w.id === slot.wallId);
+            if (!wall || !wall.active) return;
+
+            if (slot.isHero) {
+                this.ctx.save(); this.ctx.translate(slot.x, slot.y); this.ctx.rotate(Math.PI / 4);
+                this.ctx.fillStyle = slot.hero ? CONFIG.heroes[slot.hero.type].color : '#34495e';
+                this.ctx.strokeStyle = this.selectedSlot === slot ? '#f1c40f' : '#2c3e50';
+                this.ctx.lineWidth = this.selectedSlot === slot ? 3 : 1;
+                let hSize = slot.size * 0.7;
+                this.ctx.fillRect(-hSize/2, -hSize/2, hSize, hSize); this.ctx.strokeRect(-hSize/2, -hSize/2, hSize, hSize);
+                this.ctx.restore();
+
+                if (slot.hero) {
+                    this.ctx.fillStyle = '#fff'; this.ctx.font = 'bold 10px Arial'; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
+                    this.ctx.fillText(`L${slot.hero.lv}`, slot.x, slot.y);
+                }
+                return;
+            }
+
+            this.ctx.fillStyle = slot.isPremium ? '#8e44ad' : (slot.isSuper ? '#e67e22' : '#34495e');
+            this.ctx.strokeStyle = this.selectedSlot === slot ? '#f1c40f' : '#2c3e50';
+            this.ctx.lineWidth = this.selectedSlot === slot ? 3 : 1;
+            this.ctx.fillRect(slot.x - slot.size/2, slot.y - slot.size/2, slot.size, slot.size);
+            this.ctx.strokeRect(slot.x - slot.size/2, slot.y - slot.size/2, slot.size, slot.size);
+
+            if (slot.tower) {
+                let tData = CONFIG.towers[slot.tower.type];
+                this.ctx.fillStyle = tData.color;
+                this.ctx.beginPath(); this.ctx.arc(slot.x, slot.y, slot.size/2 - 2, 0, Math.PI * 2); this.ctx.fill();
+                this.ctx.fillStyle = '#fff'; this.ctx.font = '10px Arial'; this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
+                this.ctx.fillText(tData.name === 'Thợ sửa chữa' ? '+' : `L${slot.tower.lv}`, slot.x, slot.y);
+                
+                this.ctx.strokeStyle = '#000'; this.ctx.lineWidth = 3;
+                this.ctx.beginPath(); this.ctx.moveTo(slot.x, slot.y); this.ctx.lineTo(slot.x + slot.size/2 + 5, slot.y); this.ctx.stroke();
+
+                if (slot.tower.isBroken && slot.tower.cooldown > 0) {
+                    this.ctx.fillStyle = '#e74c3c'; this.ctx.font = 'bold 12px Arial';
+                    this.ctx.fillText(`Sửa: ${(slot.tower.cooldown/1000).toFixed(1)}s`, slot.x, slot.y - 25);
+                }
+            }
+        });
+
+        this.swordsmen.forEach(sm => {
+            this.ctx.fillStyle = '#e67e22'; this.ctx.beginPath();
+            this.ctx.moveTo(sm.x + 10, sm.y); this.ctx.lineTo(sm.x - 5, sm.y - 8); this.ctx.lineTo(sm.x - 5, sm.y + 8); this.ctx.fill();
+            this.ctx.fillStyle = 'red'; this.ctx.fillRect(sm.x - 10, sm.y - 15, 20, 3);
+            this.ctx.fillStyle = '#2ecc71'; this.ctx.fillRect(sm.x - 10, sm.y - 15, 20 * (sm.hp / sm.maxHp), 3);
+        });
+
+        this.enemies.forEach(e => {
+            this.ctx.fillStyle = e.color; this.ctx.beginPath(); this.ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2); this.ctx.fill();
+            this.ctx.fillStyle = 'red'; this.ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, e.radius * 2, 4);
+            this.ctx.fillStyle = '#2ecc71'; this.ctx.fillRect(e.x - e.radius, e.y - e.radius - 8, (e.radius * 2) * (e.hp / e.maxHp), 4);
+        });
+
+        this.projectiles.forEach(p => {
+            this.ctx.fillStyle = p.color; this.ctx.beginPath(); this.ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); this.ctx.fill();
+        });
+        
+        this.particles.forEach(p => {
+            this.ctx.globalAlpha = Math.max(0, p.opacity);
+            this.ctx.fillStyle = p.color || '#e74c3c'; this.ctx.beginPath(); this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); this.ctx.fill();
+            this.ctx.globalAlpha = 1;
+        });
+
+        this.floatingTexts.forEach(ft => {
+            this.ctx.globalAlpha = Math.max(0, ft.life / 1000);
+            this.ctx.fillStyle = ft.color;
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(ft.text, ft.x, ft.y);
+            this.ctx.globalAlpha = 1;
+        });
+    }
+
+    loop(timestamp) {
+        let dt = timestamp - this.lastTime;
+        this.lastTime = timestamp;
+        if (dt > 100) dt = 16; 
+        this.update(dt);
+        this.draw();
+        requestAnimationFrame(this.loop);
+    }
+}
+
+window.onload = () => new Game();
+</script>
+</body>
+</html>

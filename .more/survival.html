@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survival Co-op : Noir & Zombies</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; color: white; }
+        canvas { display: block; }
+        
+        /* UI Selection Screen */
+        #selection-screen { position: absolute; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 100; }
+        .hero-panels { display: flex; gap: 50px; margin-top: 20px; }
+        .panel { background: #222; border: 2px solid #555; padding: 20px; border-radius: 10px; text-align: center; width: 250px; }
+        .panel h2 { color: #2ecc71; margin-top: 0; }
+        .btn-ready { margin-top: 15px; padding: 10px 20px; background: #34495e; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s;}
+        .btn-ready.ready { background: #2ecc71; }
+        
+        /* HUD UI */
+        #hud { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+        
+        .player-hud { position: absolute; top: 20px; display: flex; align-items: center; width: 340px; }
+        #p1-hud { left: 20px; }
+        #p2-hud { right: 20px; flex-direction: row-reverse; }
+
+        .bars-container { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; }
+        
+        .bar-bg { background: #333; border: 2px solid #555; border-radius: 4px; position: relative; overflow: hidden; }
+        .hp-bar { height: 22px; }
+        .mana-bar { height: 12px; width: 80%; }
+        #p2-hud .mana-bar { align-self: flex-end; }
+        
+        .bar-fill { height: 100%; position: absolute; top: 0; transition: width 0.1s linear; }
+        #p1-hud .bar-fill { left: 0; }
+        #p2-hud .bar-fill { right: 0; }
+
+        .hp-fill { background: #e74c3c; }
+        .mana-fill { background: #3498db; }
+        .bar-text { position: absolute; width: 100%; text-align: center; font-size: 12px; font-weight: bold; line-height: 22px; text-shadow: 1px 1px 0 #000; z-index: 2; }
+
+        /* Level Circle */
+        .lvl-circle-wrapper { position: relative; width: 50px; height: 50px; margin: 0 10px; z-index: 5; display: flex; flex-direction: column; align-items: center; }
+        .lvl-circle { width: 44px; height: 44px; border-radius: 50%; background: #222; border: 3px solid #f1c40f; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; color: #f1c40f; text-shadow: 1px 1px 2px black; }
+        .exp-bar-bg { width: 100%; height: 6px; background: #222; border: 1px solid #555; border-radius: 3px; margin-top: 2px; overflow: hidden; }
+        .exp-fill { height: 100%; background: #2ecc71; width: 0%; transition: width 0.2s; }
+
+        /* Floating text */
+        .float-text { position: absolute; font-weight: bold; pointer-events: none; animation: floatUp 0.8s forwards; font-size: 14px; text-shadow: 1px 1px 0 #000; z-index: 50;}
+        @keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-40px) scale(1.2); opacity: 0; } }
+
+        /* Rest Button & HP Row */
+        .hp-row { display: flex; gap: 5px; align-items: center; width: 100%; pointer-events: auto; }
+        .rest-btn { background: #555; color: white; border: 1px solid #777; padding: 2px; cursor: pointer; border-radius: 4px; font-size: 14px; width: 28px; height: 26px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .rest-btn.locked { background: #e74c3c; border-color: #c0392b; }
+
+        /* Skill Cooldowns */
+        .skills-container { display: flex; gap: 8px; margin-top: 6px; }
+        #p2-hud .skills-container { justify-content: flex-end; }
+        .skill-box { width: 32px; height: 32px; background: #555; border: 2px solid #222; position: relative; border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+        .skill-cd { position: absolute; bottom: 0; left: 0; width: 100%; height: 0%; background: rgba(255, 255, 255, 0.8); transition: height 0.1s linear; }
+        .skill-box span { position: relative; z-index: 2; font-size: 14px; font-weight: bold; text-shadow: 1px 1px 0 #000, -1px -1px 0 #000; }
+
+    </style>
+</head>
+<body>
+
+    <div id="selection-screen">
+        <h1 style="color: #f1c40f; text-shadow: 0 0 10px #f1c40f;">CHỌN TƯỚNG</h1>
+        <div class="hero-panels">
+            <div class="panel">
+                <h3 style="color: #3498db;">PLAYER 1</h3>
+                <p>Move: W A S D<br>Aim: Chuột<br>Attack: Click Trái<br>Skills: Q - E - R</p>
+                <h2>NOIR (Elf)</h2>
+                <button id="btn-p1" class="btn-ready" onclick="toggleReady(1)">CHỌN</button>
+            </div>
+            <div class="panel">
+                <h3 style="color: #e74c3c;">PLAYER 2</h3>
+                <p>Move: Mũi Tên<br>Aim: Tự Động (Gần nhất)<br>Attack: Tự Động<br>Skills: 1 - 2 - 3</p>
+                <h2>NOIR (Elf)</h2>
+                <button id="btn-p2" class="btn-ready" onclick="toggleReady(2)">CHỌN</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="hud">
+        <div id="p1-hud" class="player-hud">
+            <div class="bars-container">
+                <div class="hp-row">
+                    <button id="p1-rest-btn" class="rest-btn" onclick="toggleRest(1)">🔓</button>
+                    <div class="bar-bg hp-bar" style="flex-grow: 1;"><div id="p1-hp-fill" class="bar-fill hp-fill" style="width: 100%;"></div><div id="p1-hp-txt" class="bar-text">2900/2900</div></div>
+                </div>
+                <div class="bar-bg mana-bar"><div id="p1-mp-fill" class="bar-fill mana-fill" style="width: 100%;"></div></div>
+                <div class="skills-container">
+                    <div class="skill-box"><div id="p1-s1-cd" class="skill-cd"></div><span>Q</span></div>
+                    <div class="skill-box"><div id="p1-s2-cd" class="skill-cd"></div><span>E</span></div>
+                    <div class="skill-box"><div id="p1-s3-cd" class="skill-cd"></div><span>R</span></div>
+                </div>
+            </div>
+            <div class="lvl-circle-wrapper">
+                <div id="p1-lvl" class="lvl-circle">1</div>
+                <div class="exp-bar-bg"><div id="p1-exp-fill" class="exp-fill"></div></div>
+            </div>
+        </div>
+        
+        <div id="p2-hud" class="player-hud">
+            <div class="bars-container">
+                <div class="hp-row" style="flex-direction: row-reverse;">
+                    <button id="p2-rest-btn" class="rest-btn" onclick="toggleRest(2)">🔓</button>
+                    <div class="bar-bg hp-bar" style="flex-grow: 1;"><div id="p2-hp-fill" class="bar-fill hp-fill" style="width: 100%;"></div><div id="p2-hp-txt" class="bar-text">2900/2900</div></div>
+                </div>
+                <div class="bar-bg mana-bar"><div id="p2-mp-fill" class="bar-fill mana-fill" style="width: 100%;"></div></div>
+                <div class="skills-container">
+                    <div class="skill-box"><div id="p2-s3-cd" class="skill-cd"></div><span>3</span></div>
+                    <div class="skill-box"><div id="p2-s2-cd" class="skill-cd"></div><span>2</span></div>
+                    <div class="skill-box"><div id="p2-s1-cd" class="skill-cd"></div><span>1</span></div>
+                </div>
+            </div>
+            <div class="lvl-circle-wrapper">
+                <div id="p2-lvl" class="lvl-circle">1</div>
+                <div class="exp-bar-bg"><div id="p2-exp-fill" class="exp-fill"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+/* =========================================
+   1. CẤU HÌNH & ENGINE CƠ BẢN
+========================================= */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const WORLD_WIDTH = 4000;
+const WORLD_HEIGHT = 4000;
+
+let gameActive = false;
+let lastTime = 0;
+let gameTime = 0;
+
+let p1Ready = false;
+let p2Ready = false;
+
+// Global Arrays
+let players = [];
+let enemies = [];
+let projectiles = [];
+let effects = [];
+let drops = [];
+
+// Input Management
+const keys = {};
+const mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false };
+
+window.addEventListener('keydown', e => { keys[e.code] = true; keys[e.key] = true; });
+window.addEventListener('keyup', e => { keys[e.code] = false; keys[e.key] = false; });
+window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+window.addEventListener('mousedown', () => mouse.down = true);
+window.addEventListener('mouseup', () => mouse.down = false);
+window.addEventListener('contextmenu', e => e.preventDefault());
+
+// Utilities
+function getDistSq(o1, o2) { return (o1.x - o2.x)**2 + (o1.y - o2.y)**2; }
+function spawnFloatingText(txt, x, y, color) {
+    const el = document.createElement('div');
+    el.className = 'float-text'; el.innerText = txt;
+    el.style.left = (x - camera.x) + 'px'; el.style.top = (y - camera.y) + 'px';
+    el.style.color = color;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 800);
+}
+
+// Camera theo dõi trung bình cộng 2 người chơi
+const camera = {
+    x: 0, y: 0,
+    update() {
+        if (players.length === 0) return;
+        let cx = 0, cy = 0;
+        let aliveCount = 0;
+        players.forEach(p => { if(!p.dead) { cx += p.x; cy += p.y; aliveCount++; }});
+        if (aliveCount > 0) {
+            cx /= aliveCount; cy /= aliveCount;
+            this.x += (cx - canvas.width/2 - this.x) * 0.1;
+            this.y += (cy - canvas.height/2 - this.y) * 0.1;
+        }
+        this.x = Math.max(0, Math.min(this.x, WORLD_WIDTH - canvas.width));
+        this.y = Math.max(0, Math.min(this.y, WORLD_HEIGHT - canvas.height));
+    }
+};
+
+function toggleRest(id) {
+    let p = players.find(player => player.id === id);
+    if(p) {
+        p.isResting = !p.isResting;
+        let btn = document.getElementById(`p${id}-rest-btn`);
+        if(p.isResting) {
+            btn.classList.add('locked');
+            btn.innerText = "🔒";
+            spawnFloatingText("RESTING", p.x, p.y, "#ccc");
+        } else {
+            btn.classList.remove('locked');
+            btn.innerText = "🔓";
+            spawnFloatingText("ACTIVE", p.x, p.y, "#fff");
+        }
+    }
+}
+
+function toggleReady(id) {
+    if(id === 1) { p1Ready = true; document.getElementById('btn-p1').classList.add('ready'); document.getElementById('btn-p1').innerText = "ĐÃ SẴN SÀNG"; }
+    if(id === 2) { p2Ready = true; document.getElementById('btn-p2').classList.add('ready'); document.getElementById('btn-p2').innerText = "ĐÃ SẴN SÀNG"; }
+    
+    if(p1Ready && p2Ready) {
+        document.getElementById('selection-screen').style.display = 'none';
+        document.getElementById('hud').style.display = 'block';
+        
+        players.push(new Noir(1));
+        players.push(new Noir(2));
+        players.forEach(p => p.updateUI());
+        
+        gameActive = true;
+        lastTime = performance.now();
+        requestAnimationFrame(gameLoop);
+    }
+}
+
+/* =========================================
+   2. HỆ THỐNG CLASS CHÍNH
+========================================= */
+
+function getExpRequired(level) {
+    let exp = 5;
+    let growth = 0.25;
+    for(let i = 1; i < level; i++) {
+        exp += exp * growth;
+        if (i % 5 === 0) growth = Math.max(0.05, growth - 0.01);
+    }
+    return exp;
+}
+
+class Player {
+    constructor(id) {
+        this.id = id;
+        this.x = WORLD_WIDTH/2 + (id === 1 ? -100 : 100);
+        this.y = WORLD_HEIGHT/2;
+        this.radius = 18;
+        this.dead = false;
+        this.isResting = false;
+
+        this.maxHp = 100; this.hp = 100;
+        this.maxMp = 100; this.mp = 100;
+        this.atk = 10; this.matk = 0;
+        this.ats = 1;
+        this.speed = 200;
+        this.hpRegen = 1;
+        this.range = 300;
+
+        this.level = 1;
+        this.exp = 0;
+        this.expToLevel = getExpRequired(this.level);
+
+        this.atkTimer = 0;
+        this.regenTimer = 0;
+        
+        this.skills = {
+            1: { cd: 0, maxCd: 3 },
+            2: { cd: 0, maxCd: 5 },
+            3: { cd: 0, maxCd: 10 }
+        };
+    }
+
+    gainExp(amount) {
+        this.exp += amount;
+        while (this.exp >= this.expToLevel) {
+            this.exp -= this.expToLevel;
+            this.level++;
+            this.expToLevel = getExpRequired(this.level);
+            this.onLevelUp();
+        }
+        this.updateUI();
+    }
+
+    onLevelUp() {}
+
+    takeDamage(amt) {
+        if(this.dead) return;
+        this.hp -= amt;
+        spawnFloatingText(`-${Math.round(amt)}`, this.x, this.y, "#ff4757");
+        if(this.hp <= 0) {
+            this.hp = 0; this.dead = true;
+            spawnFloatingText("DEAD", this.x, this.y, "red");
+        }
+        this.updateUI();
+    }
+
+    updateUI() {
+        if(this.dead) return;
+        let prefix = this.id === 1 ? 'p1' : 'p2';
+        document.getElementById(`${prefix}-hp-fill`).style.width = (this.hp/this.maxHp*100) + '%';
+        document.getElementById(`${prefix}-hp-txt`).innerText = `${Math.round(this.hp)}/${Math.round(this.maxHp)}`;
+        document.getElementById(`${prefix}-mp-fill`).style.width = (this.mp/this.maxMp*100) + '%';
+        document.getElementById(`${prefix}-lvl`).innerText = this.level;
+        document.getElementById(`${prefix}-exp-fill`).style.width = (this.exp/this.expToLevel*100) + '%';
+        
+        document.getElementById(`${prefix}-s1-cd`).style.height = (this.skills[1].cd / this.skills[1].maxCd * 100) + '%';
+        document.getElementById(`${prefix}-s2-cd`).style.height = (this.skills[2].cd / this.skills[2].maxCd * 100) + '%';
+        document.getElementById(`${prefix}-s3-cd`).style.height = (this.skills[3].cd / this.skills[3].maxCd * 100) + '%';
+    }
+
+    getNearestEnemy() {
+        let nearest = null;
+        let minDist = Infinity;
+        enemies.forEach(e => {
+            let d = getDistSq(this, e);
+            if (d < minDist) { minDist = d; nearest = e; }
+        });
+        return nearest;
+    }
+}
+
+class Noir extends Player {
+    constructor(id) {
+        super(id);
+        this.color = "#2ecc71";
+        this.maxHp = 2900; this.hp = 2900;
+        this.atk = 25;
+        this.matk = 0;
+        this.ats = 1.0; 
+        this.speed = 220;
+        this.hpRegen = 1.0;
+        this.range = 500;
+        this.passiveStacks = 0;
+    }
+
+    onLevelUp() {
+        this.maxHp += 75; this.hp += 75;
+        this.atk += 12;
+        spawnFloatingText("LEVEL UP!", this.x, this.y - 30, "#f1c40f");
+    }
+
+    addPassiveStack() {
+        this.passiveStacks++;
+        if (this.passiveStacks > 10) {
+            this.passiveStacks = 0;
+            spawnFloatingText("STACKS CLEARED", this.x, this.y + 20, "#aaa");
+        }
+    }
+
+    getActualAtk() { return this.atk + this.passiveStacks; }
+    getActualAts() { return this.ats * (1 + (this.passiveStacks * 0.05)); }
+
+    update(dt) {
+        if(this.dead) return;
+
+        this.regenTimer -= dt;
+        if(this.regenTimer <= 0) {
+            this.hp = Math.min(this.maxHp, this.hp + this.hpRegen);
+            this.regenTimer = 1.0;
+            this.updateUI();
+        }
+
+        let dx = 0, dy = 0;
+        if (this.id === 1) { 
+            if(keys['KeyW']) dy -= 1; if(keys['KeyS']) dy += 1;
+            if(keys['KeyA']) dx -= 1; if(keys['KeyD']) dx += 1;
+        } else { 
+            if(keys['ArrowUp']) dy -= 1; if(keys['ArrowDown']) dy += 1;
+            if(keys['ArrowLeft']) dx -= 1; if(keys['ArrowRight']) dx += 1;
+        }
+
+        if(dx !== 0 || dy !== 0) {
+            let len = Math.hypot(dx, dy);
+            this.x += (dx/len) * this.speed * dt;
+            this.y += (dy/len) * this.speed * dt;
+            this.x = Math.max(this.radius, Math.min(this.x, WORLD_WIDTH - this.radius));
+            this.y = Math.max(this.radius, Math.min(this.y, WORLD_HEIGHT - this.radius));
+        }
+
+        let aimAngle = 0;
+        let hasTarget = false;
+
+        if (this.id === 1) {
+            aimAngle = Math.atan2(mouse.worldY - this.y, mouse.worldX - this.x);
+            hasTarget = true;
+        } else {
+            let target = this.getNearestEnemy();
+            if (target && getDistSq(this, target) < (this.range + 200)**2 ) {
+                aimAngle = Math.atan2(target.y - this.y, target.x - this.x);
+                hasTarget = true;
+            }
+        }
+
+        this.atkTimer -= dt;
+        let isAttacking = (this.id === 1) ? mouse.down : hasTarget;
+        
+        if (isAttacking && this.atkTimer <= 0 && hasTarget && !this.isResting) {
+            let currentAts = this.getActualAts();
+            this.atkTimer = 1.0 / currentAts;
+            let dmg = this.getActualAtk() * 0.50;
+            projectiles.push(new Projectile(this, this.x, this.y, aimAngle, 800, dmg, this.range, 6, {pierce: 1, type: 'AUTO'}, "#2ecc71"));
+        }
+
+        for(let k in this.skills) {
+            if (this.skills[k].cd > 0) {
+                this.skills[k].cd -= dt;
+                if (this.skills[k].cd < 0) this.skills[k].cd = 0;
+            }
+        }
+        this.updateUI();
+
+        let kQ = (this.id === 1 && keys['KeyQ']) || (this.id === 2 && keys['Digit1']);
+        let kE = (this.id === 1 && keys['KeyE']) || (this.id === 2 && keys['Digit2']);
+        let kR = (this.id === 1 && keys['KeyR']) || (this.id === 2 && keys['Digit3']);
+
+        if (kQ && this.skills[1].cd <= 0 && hasTarget && !this.isResting) {
+            this.skills[1].cd = this.skills[1].maxCd;
+            let dmg = this.getActualAtk() * 0.30;
+            for(let i = -1; i <= 1; i++) {
+                projectiles.push(new Projectile(this, this.x, this.y, aimAngle + (i*0.2), 900, dmg, 550, 6, {pierce: 999, status: 'SLOW'}, "#27ae60"));
+            }
+            spawnFloatingText("TRIPLE ARROW!", this.x, this.y, "#27ae60");
+        }
+
+        if (kE && this.skills[2].cd <= 0 && hasTarget && !this.isResting) {
+            this.skills[2].cd = this.skills[2].maxCd;
+            let aoeX, aoeY;
+            if (this.id === 1) {
+                let d = Math.hypot(mouse.worldX - this.x, mouse.worldY - this.y);
+                let actualDist = Math.min(d, 500);
+                aoeX = this.x + Math.cos(aimAngle) * actualDist;
+                aoeY = this.y + Math.sin(aimAngle) * actualDist;
+            } else {
+                let target = this.getNearestEnemy();
+                aoeX = target.x; aoeY = target.y;
+            }
+            let dmg = this.getActualAtk() * 0.25;
+            effects.push(new RainOfArrows(this, aoeX, aoeY, dmg));
+            spawnFloatingText("RAIN!", this.x, this.y, "#1abc9c");
+        }
+
+        if (kR && this.skills[3].cd <= 0 && hasTarget && !this.isResting) {
+            this.skills[3].cd = this.skills[3].maxCd;
+            let dmg = this.getActualAtk() * 3.50;
+            effects.push(new UltimateHitbox(this, this.x, this.y, aimAngle, dmg));
+            spawnFloatingText("CHARGING...", this.x, this.y, "#f39c12");
+        }
+    }
+
+    draw() {
+        if(this.dead) return;
+        
+        ctx.fillStyle = "#ffb8b8";
+        
+        // Vẽ tai nhọn bên trái
+        ctx.beginPath();
+        ctx.moveTo(this.x - 10, this.y - 5);
+        ctx.lineTo(this.x - 22, this.y - 18);
+        ctx.lineTo(this.x - 5, this.y - 12);
+        ctx.fill();
+        
+        // Vẽ tai nhọn bên phải
+        ctx.beginPath();
+        ctx.moveTo(this.x + 10, this.y - 5);
+        ctx.lineTo(this.x + 22, this.y - 18);
+        ctx.lineTo(this.x + 5, this.y - 12);
+        ctx.fill();
+
+        // Vẽ thân
+        ctx.fillStyle = this.color;
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+        
+        // Marker ID
+        ctx.fillStyle = 'white'; ctx.font = '14px Arial'; ctx.textAlign = 'center';
+        ctx.fillText(`P${this.id}`, this.x, this.y + 5);
+
+        if(this.passiveStacks > 0) {
+            ctx.fillStyle = '#f1c40f'; ctx.font = '12px Arial';
+            ctx.fillText(`${this.passiveStacks}★`, this.x, this.y - this.radius - 5);
+        }
+    }
+}
+
+class Enemy {
+    constructor() {
+        let angle = Math.random() * Math.PI * 2;
+        let dist = 600 + Math.random() * 200;
+        let center = {x: WORLD_WIDTH/2, y: WORLD_HEIGHT/2};
+        if(players.length > 0) {
+            let activePlayers = players.filter(p => !p.dead && !p.isResting);
+            if(activePlayers.length > 0) {
+                let p = activePlayers[Math.floor(Math.random() * activePlayers.length)];
+                center = {x: p.x, y: p.y};
+            }
+        }
+        this.x = center.x + Math.cos(angle) * dist;
+        this.y = center.y + Math.sin(angle) * dist;
+        this.radius = 20;
+        
+        this.maxHp = 190; this.hp = 190;
+        this.atk = 15;
+        this.speed = 100;
+        this.baseSpeed = 100;
+
+        this.state = 'CHASING';
+        this.windupTimer = 0;
+        this.cooldownTimer = 0;
+        this.targetPlayer = null;
+
+        this.slowTimer = 0;
+    }
+
+    update(dt) {
+        if (this.slowTimer > 0) {
+            this.slowTimer -= dt;
+            this.speed = this.baseSpeed * 0.5;
+        } else {
+            this.speed = this.baseSpeed;
+        }
+
+        let nearest = null; let minDist = Infinity;
+        players.forEach(p => {
+            if(!p.dead && !p.isResting) {
+                let d = getDistSq(this, p);
+                if(d < minDist) { minDist = d; nearest = p; }
+            }
+        });
+
+        if(!nearest) return;
+
+        if (this.state === 'CHASING') {
+            let a = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+            let distToPlayer = Math.sqrt(minDist);
+
+            if (distToPlayer <= this.radius + nearest.radius + 10) {
+                this.state = 'WINDUP';
+                this.windupTimer = 0.5;
+                this.targetPlayer = nearest;
+            } else {
+                this.x += Math.cos(a) * this.speed * dt;
+                this.y += Math.sin(a) * this.speed * dt;
+            }
+        } 
+        else if (this.state === 'WINDUP') {
+            this.windupTimer -= dt;
+            if (this.windupTimer <= 0) {
+                if(!this.targetPlayer.isResting && !this.targetPlayer.dead) {
+                    this.targetPlayer.takeDamage(this.atk);
+                }
+                this.state = 'COOLDOWN';
+                this.cooldownTimer = 1.0;
+            }
+        }
+        else if (this.state === 'COOLDOWN') {
+            this.cooldownTimer -= dt;
+            let a = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+            this.x += Math.cos(a) * (this.speed * 0.5) * dt;
+            this.y += Math.sin(a) * (this.speed * 0.5) * dt;
+
+            if (this.cooldownTimer <= 0) {
+                this.state = 'CHASING';
+            }
+        }
+    }
+
+    draw() {
+        ctx.fillStyle = '#6ab04c';
+        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = '#eb4d4b';
+        ctx.beginPath(); ctx.arc(this.x - 7, this.y - 5, 4, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(this.x + 7, this.y - 5, 4, 0, Math.PI*2); ctx.fill();
+
+        if (this.state === 'WINDUP') {
+            ctx.strokeStyle = 'red'; ctx.lineWidth = 3; ctx.stroke();
+        }
+
+        if (this.hp < this.maxHp) {
+            ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30, 4);
+            ctx.fillStyle = '#2ecc71'; ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30 * (this.hp/this.maxHp), 4);
+        }
+    }
+
+    takeDamage(amt, sourcePlayer) {
+        this.hp -= amt;
+        if (sourcePlayer instanceof Noir) sourcePlayer.addPassiveStack();
+
+        if (this.hp <= 0) {
+            this.hp = 0; this.dead = true;
+            drops.push(new Drop(this.x, this.y, Math.floor(Math.random() * 4) + 3));
+        }
+    }
+}
+
+class Projectile {
+    constructor(owner, x, y, angle, speed, dmg, maxDist, size, props, color) {
+        this.owner = owner;
+        this.x = x; this.y = y; this.vx = Math.cos(angle)*speed; this.vy = Math.sin(angle)*speed;
+        this.dmg = dmg; this.maxDist = maxDist; this.dist = 0; this.size = size;
+        this.props = props; this.color = color;
+        this.dead = false;
+        this.hitList = [];
+    }
+    update(dt) {
+        let moveX = this.vx * dt; let moveY = this.vy * dt;
+        this.x += moveX; this.y += moveY;
+        this.dist += Math.hypot(moveX, moveY);
+        if (this.dist >= this.maxDist) this.dead = true;
+
+        for(let e of enemies) {
+            if(!this.hitList.includes(e) && getDistSq(this, e) < (this.size + e.radius)**2) {
+                e.takeDamage(this.dmg, this.owner);
+                if(this.props.status === 'SLOW') e.slowTimer = 2.0;
+                
+                this.hitList.push(e);
+                this.props.pierce--;
+                if(this.props.pierce <= 0) { this.dead = true; break; }
+            }
+        }
+    }
+    draw() {
+        ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+class RainOfArrows {
+    constructor(owner, x, y, dmgPerTick) {
+        this.owner = owner; this.x = x; this.y = y; this.dmg = dmgPerTick;
+        this.radius = 120;
+        this.delay = 0.5;
+        this.ticksRemaining = 3;
+        this.tickTimer = 0.5;
+        this.dead = false;
+    }
+    update(dt) {
+        if(this.delay > 0) {
+            this.delay -= dt;
+            return;
+        }
+        this.tickTimer -= dt;
+        if(this.tickTimer <= 0 && this.ticksRemaining > 0) {
+            this.ticksRemaining--;
+            this.tickTimer = 0.5;
+            
+            let rSq = this.radius**2;
+            enemies.forEach(e => {
+                if(getDistSq(this, e) < rSq) e.takeDamage(this.dmg, this.owner);
+            });
+        }
+        if(this.ticksRemaining <= 0) this.dead = true;
+    }
+    draw() {
+        ctx.strokeStyle = this.delay > 0 ? "rgba(26, 188, 156, 0.3)" : "rgba(26, 188, 156, 0.8)";
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.stroke();
+        ctx.fillStyle = "rgba(26, 188, 156, 0.1)"; ctx.fill();
+    }
+}
+
+class UltimateHitbox {
+    constructor(owner, x, y, angle, dmg) {
+        this.owner = owner; this.x = x; this.y = y; this.angle = angle; this.dmg = dmg;
+        this.width = 650; this.height = 70;
+        this.windup = 0.75;
+        this.dead = false;
+    }
+    update(dt) {
+        this.x = this.owner.x; this.y = this.owner.y;
+        this.windup -= dt;
+        if(this.windup <= 0) {
+            let endX = this.x + Math.cos(this.angle) * this.width;
+            let endY = this.y + Math.sin(this.angle) * this.width;
+            
+            enemies.forEach(e => {
+                let l2 = getDistSq({x:this.x, y:this.y}, {x:endX, y:endY});
+                let t = ((e.x - this.x) * (endX - this.x) + (e.y - this.y) * (endY - this.y)) / l2;
+                t = Math.max(0, Math.min(1, t));
+                let projX = this.x + t * (endX - this.x);
+                let projY = this.y + t * (endY - this.y);
+                let distToLine = Math.sqrt(getDistSq(e, {x:projX, y:projY}));
+
+                if (distToLine <= (this.height/2) + e.radius) {
+                    e.takeDamage(this.dmg, this.owner);
+                }
+            });
+            this.dead = true;
+        }
+    }
+    draw() {
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        ctx.fillStyle = "rgba(241, 196, 15, 0.3)";
+        ctx.fillRect(0, -this.height/2, this.width, this.height);
+        if(this.windup <= 0) {
+            ctx.fillStyle = "#f1c40f"; ctx.fillRect(0, -this.height/2, this.width, this.height);
+        }
+        ctx.restore();
+    }
+}
+
+class Drop {
+    constructor(x, y, expVal) { this.x=x; this.y=y; this.expVal=expVal; this.radius=6; this.dead=false; }
+    update(dt) {
+        let nearest = null; let minDist = 250*250;
+        players.forEach(p => {
+            if(!p.dead) { let d = getDistSq(this, p); if(d < minDist) { minDist = d; nearest = p; } }
+        });
+        if(nearest) {
+            let a = Math.atan2(nearest.y - this.y, nearest.x - this.x);
+            this.x += Math.cos(a)*400*dt; this.y += Math.sin(a)*400*dt;
+            if(Math.sqrt(minDist) < this.radius + nearest.radius) {
+                nearest.gainExp(this.expVal); this.dead = true;
+            }
+        }
+    }
+    draw() { ctx.fillStyle="#f1c40f"; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fill(); }
+}
+
+/* =========================================
+   3. GAME LOOP & LOGIC
+========================================= */
+
+let enemySpawnTimer = 0;
+let maxEnemies = 7;
+
+function gameLoop(timestamp) {
+    if(!gameActive) return;
+    const dt = Math.min((timestamp - lastTime)/1000, 0.1);
+    lastTime = timestamp;
+    gameTime += dt;
+
+    maxEnemies = 7 + Math.floor(gameTime / 5);
+    maxEnemies = Math.min(maxEnemies, 150);
+
+    enemySpawnTimer -= dt;
+    if(enemySpawnTimer <= 0 && enemies.length < maxEnemies) {
+        enemies.push(new Enemy());
+        enemySpawnTimer = 0.2;
+    }
+
+    players.forEach(p => p.update(dt));
+    camera.update();
+    mouse.worldX = mouse.x + camera.x; mouse.worldY = mouse.y + camera.y;
+
+    [enemies, projectiles, effects, drops].forEach(list => {
+        for(let i = list.length-1; i>=0; i--) {
+            list[i].update(dt);
+            if(list[i].dead) list.splice(i, 1);
+        }
+    });
+
+    if(players.every(p => p.dead)) {
+        gameActive = false;
+        alert("GAME OVER! Cả 2 người chơi đã chết.");
+        location.reload();
+    }
+
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    ctx.save(); ctx.translate(-camera.x, -camera.y);
+    
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.beginPath();
+    for(let x = 0; x < WORLD_WIDTH; x+=100) { ctx.moveTo(x,0); ctx.lineTo(x,WORLD_HEIGHT); }
+    for(let y = 0; y < WORLD_HEIGHT; y+=100) { ctx.moveTo(0,y); ctx.lineTo(WORLD_WIDTH,y); }
+    ctx.stroke();
+
+    drops.forEach(d => d.draw());
+    effects.forEach(e => e.draw());
+    enemies.forEach(e => e.draw());
+    players.forEach(p => p.draw());
+    projectiles.forEach(p => p.draw());
+
+    ctx.restore();
+    requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('resize', () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+</script>
+</body>
+</html>
