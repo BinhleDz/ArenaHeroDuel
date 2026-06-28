@@ -8,6 +8,9 @@ class ShadowPeaBullet {
         this.owner = owner;
         this.damage = 8 + (owner.hasStatus('strength') ? owner.getStatusValue('strength') : 0);
         this.active = true;
+        
+        // Phát âm thanh khi bắn thường ở dạng thường
+        playSkillSound('assets/sounds/sound_skill/shadowpeashoter/base_cast.ogg');
     }
     update() {
         this.x += this.vx;
@@ -25,6 +28,10 @@ class ShadowPeaBullet {
         target.takeDamage(this.damage);
         this.triggerVamp();
         effects.push(new Explosion(this.x, this.y, 25, '#8a2be2'));
+        
+        // Phát âm thanh khi đạn thường trúng mục tiêu
+        playSkillSound('assets/sounds/sound_skill/shadowpeashoter/base_hit.ogg');
+        
         this.active = false;
     }
     triggerVamp() {
@@ -53,8 +60,6 @@ class ShadowBomb {
 
         this.width = 30; this.height = 30;
         this.active = true;
-        
-        // DÒNG THÊM VÀO: Bỏ qua va chạm với bản thân (xuyên qua người)
         this.preserve = true; 
     }
     update() {
@@ -71,7 +76,7 @@ class ShadowBomb {
         ctx.save();
         ctx.fillStyle = '#050505';
         ctx.shadowBlur = 15; 
-        ctx.shadowColor = this.isDarkForm ? '#ff00ff' : '#8a2be2'; // Màu viền thay đổi theo Form
+        ctx.shadowColor = this.isDarkForm ? '#ff00ff' : '#8a2be2'; 
         ctx.beginPath(); ctx.arc(this.x, this.y, 18 + Math.sin(Date.now()/100)*4, 0, Math.PI*2); ctx.fill();
         ctx.restore();
     }
@@ -82,21 +87,21 @@ class ShadowBomb {
         if (!this.active) return;
         this.active = false;
         
-        // Tìm kẻ địch (Hỗ trợ 2 người chơi)
+        // Phát âm thanh khi chiêu 1 phát nổ
+        playSkillSound('assets/sounds/sound_skill/shadowpeashoter/c1_ex.ogg');
+        
         let enemy = this.owner === player1 ? player2 : player1;
         let ex = enemy.x + enemy.width/2;
         let ey = enemy.y + enemy.height/2;
         let dist = Math.hypot(ex - this.x, ey - this.y);
 
         if (!this.isDarkForm) {
-            // Basic Form: Bán kính 125px, 50 dame
             effects.push(new Explosion(this.x, this.y, 250, 'rgba(75, 0, 130, 0.8)'));
             if (dist <= 250 && !enemy.isDead) {
                 enemy.takeDamage(50);
                 this.triggerVamp();
             }
         } else {
-            // Dark Form: Core 125px (75dame), lan ra ngoài 450px (giảm dần xuống 10dame)
             effects.push(new Explosion(this.x, this.y, 575, 'rgba(75, 0, 130, 0.4)'));
             effects.push(new Explosion(this.x, this.y, 250, 'rgba(255, 0, 255, 0.9)'));
             
@@ -111,7 +116,6 @@ class ShadowBomb {
                 }
             }
         }
-        // Rung màn hình
         canvas.style.transform = `translate(${Math.random()*10 - 5}px, ${Math.random()*10 - 5}px)`;
         setTimeout(() => canvas.style.transform = 'none', 100);
     }
@@ -129,12 +133,14 @@ class ShadowLaser {
         this.x = x; this.y = y;
         this.facingRight = facingRight;
         this.owner = owner;
-        this.timer = 15; // Tồn tại 15 frame (0.25s)
+        this.timer = 15; 
         this.active = true;
+
+        // Phát âm thanh khi bắn tia laser ở trạng thái cường hóa (Shadow Form)
+        playSkillSound('assets/sounds/sound_skill/shadowpeashoter/base_cast_shadow.ogg');
 
         let enemy = this.owner === player1 ? player2 : player1;
         
-        // Check Hitbox (Tia lazer ngang vô tận)
         let hit = false;
         if (facingRight && enemy.x > this.x && enemy.y + enemy.height > this.y - 25 && enemy.y < this.y + 25) hit = true;
         if (!facingRight && enemy.x + enemy.width < this.x && enemy.y + enemy.height > this.y - 25 && enemy.y < this.y + 25) hit = true;
@@ -142,7 +148,7 @@ class ShadowLaser {
         if (hit && !enemy.isDead) {
             let baseDmg = 17 + (owner.hasStatus('strength') ? owner.getStatusValue('strength') : 0);
             enemy.takeDamage(baseDmg);
-            enemy.addStatus('snowless', 'debuff', 'assets/icon/debuff/snowless.png', 30, 50, 60); // Chậm 50% trong 0.5s (30 frames)
+            enemy.addStatus('snowless', 'debuff', 'assets/icon/debuff/snowless.png', 30, 50, 60); 
             enemy.addStatus('silence', 'debuff', 'assets/icon/debuff/silence.png', 30, 30, 60);
             enemy.addStatus('freeze', 'debuff', 'assets/icon/debuff/freeze.png', 60, 0, 60);
 
@@ -167,7 +173,7 @@ class ShadowLaser {
         let laserLength = canvas.width;
         if (this.facingRight) {
             ctx.fillRect(this.x, this.y - 10, laserLength, 20);
-            ctx.fillStyle = '#ffffff'; ctx.fillRect(this.x, this.y - 3, laserLength, 6); // Lõi lazer
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(this.x, this.y - 3, laserLength, 6); 
         } else {
             ctx.fillRect(this.x - laserLength, this.y - 10, laserLength, 20);
             ctx.fillStyle = '#ffffff'; ctx.fillRect(this.x - laserLength, this.y - 3, laserLength, 6);
@@ -179,8 +185,11 @@ class ShadowLaser {
 class ShadowZoneFX {
     constructor(x, y, radius) {
         this.x = x; this.y = y; this.radius = radius;
-        this.timer = 45; // Tồn tại 0.75s
+        this.timer = 45; 
         this.active = true;
+        
+        // Phát âm thanh khi kích hoạt Chiêu 2 (Hố đen/Vùng bảo vệ)
+        playSkillSound('assets/sounds/sound_skill/shadowpeashoter/c2_cast.ogg');
     }
     update() {
         this.timer--;

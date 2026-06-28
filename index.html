@@ -4181,22 +4181,25 @@ else if (this.isChanneling) {
             else if (this.heroType === 'shadowpea') {
                 if (skillKey === 'basic') { 
                     this.executeSkill('basic'); 
-                    this.cds.basic = 45; // Tốc đánh 0.75s 
+                    this.cds.basic = 45; 
                 }
                 else if (skillKey === 'c1') { 
-                    this.startChannel('shadowpea_c1', 45); // Vận 0.75s
-                    this.cds.c1 = 180; // Hồi 3s
+                    playSkillSound('assets/sounds/sound_skill/shadowpeashoter/c1_cast.ogg');
+                    this.startChannel('shadowpea_c1', 45); 
+                    this.cds.c1 = 180; 
                 }
                 else if (skillKey === 'c2') { 
                     this.executeSkill('c2'); 
-                    this.cds.c2 = 260; // Hồi 4.3s
+                    this.cds.c2 = 260; 
                 }
                 else if (skillKey === 'c3') { 
                     if (!this.isShadowDark) {
+                        // THÊM DÒNG NÀY: Phát âm thanh khi biến hình sang dạng bóng tối (Dark Form)
+                        playSkillSound('assets/sounds/sound_skill/shadowpeashoter/c3_cast.ogg');
+
                         this.executeSkill('c3'); 
-                        this.cds.c3 = 1020; // Hồi 17s
+                        this.cds.c3 = 1020; 
                     } else {
-                        // Đang ở Dark Form bấm C3 sẽ show time
                         effects.push(new DamageText(this.x, this.y - 20, `${Math.ceil(this.shadowDarkTimer/60)}s`, '#ff00ff'));
                     }
                 }
